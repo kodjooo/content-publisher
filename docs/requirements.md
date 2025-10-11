@@ -1,0 +1,169 @@
+
+Модуль публикаций (VK, Telegram, Telegraph)
+===========================================
+
+0) ОБЩИЙ ОБЗОР
+-------------------------------------------
+Модуль делает два типа задач:
+
+A. RSS-флоу
+1) Берёт строки из вкладки RSS, где Status = "Revised".
+2) Публикует большую версию (GPT Post) с картинкой (Image URL) в Telegraph, записывает ссылку в Telegraph Link.
+3) Берёт маленькую версию (Short Post), добавляет в конец "\n\nЧитать подробнее: {Telegraph Link}".
+4) Публикует короткую версию + картинку (Image URL) в VK и Telegram.
+5) Сохраняет ссылки публикаций в VK Post Link и Post Link (TG).
+6) Проставляет Status = "Published".
+
+B. Точечные флоу
+- Вкладка VK: публикует Title + Content + Image URL только в VK, сохраняет ссылку в VK Post Link, ставит Published.
+- Вкладка Setka: публикует Title + Content + Image URL только в Telegram, сохраняет ссылку в Post Link, ставит Published.
+
+1) GOOGLE SHEETS
+-------------------------------------------
+Sheet ID: 1bjJiP24WnkierEFqZy00Hw9kSR4ESmXgVetrBeTULnU
+Вкладки: RSS, VK, Setka
+
+RSS:
+  GPT Post — длинная версия для Telegraph
+  Short Post — короткая версия для VK/TG
+  Image URL — картинка
+  Telegraph Link — ссылка на статью
+  VK Post Link — ссылка на пост VK
+  Post Link — ссылка на пост TG
+  Status — Published после публикации
+
+VK:
+  Title, Content, Image URL, VK Post Link, Status
+
+Setka:
+  Title, Content, Image URL, Post Link, Status
+
+2) TELEGRAPH (Telegra.ph API)
+-------------------------------------------
+Если TELEGRAPH_ACCESS_TOKEN нет — создать через createAccount:
+  short_name="Mark"
+  author_name="Марк Аборчи / AI и Автоматизация"
+  author_url="https://t.me/aborchi_m"
+
+createPage параметры:
+  title — Title или первые 100 символов GPT Post
+  author_name, author_url — как выше
+  content — массив JSON-нодов, включая картинку и текст параграфами.
+
+На выходе: url → Telegraph Link.
+
+3) VK (личная страница)
+-------------------------------------------
+Нужен VK_USER_ACCESS_TOKEN с правами wall,photos,offline.
+
+Загрузка фото:
+1) photos.getWallUploadServer
+2) POST на upload_url (multipart, поле photo)
+3) photos.saveWallPhoto → owner_id, id
+
+Публикация:
+wall.post(owner_id, message, attachments=photo{owner_id}_{id})
+Ссылка: https://vk.com/wall{owner_id}_{post_id} → VK Post Link
+
+4) TELEGRAM (канал, bot → admin)
+-------------------------------------------
+Нужен TELEGRAM_BOT_TOKEN.
+Канал должен иметь username (@channel).
+
+sendPhoto:
+  chat_id=@channel
+  photo=Image URL
+  caption=текст поста + "\n\nЧитать подробнее: {Telegraph Link}"
+  parse_mode="HTML"
+caption ≤ 1024 символов.
+
+Ссылка: https://t.me/<channel>/<message_id> → Post Link
+
+5) СБОРКА ТЕКСТА RSS
+-------------------------------------------
+Short Post + "\n\nЧитать подробнее: {Telegraph Link}"
+
+6) ОБРАБОТКА VK/SETKA
+-------------------------------------------
+VK: Title + Content → wall.post с Image URL → VK Post Link, Status=Published
+Setka: Title + Content → sendPhoto(Image URL + caption) → Post Link, Status=Published
+
+7) ОШИБКИ, ЛОГИ, РЕТРАИ
+-------------------------------------------
+2 повтора (всего 3 попытки), экспоненциальная пауза.
+Логирование в stdout (JSON), писать id строки, вкладку, результат.
+Ошибки в Notes, статус не меняется.
+
+8) ENV
+-------------------------------------------
+GOOGLE_SHEET_ID=1bjJiP24WnkierEFqZy00Hw9kSR4ESmXgVetrBeTULnU
+GOOGLE_SERVICE_ACCOUNT_JSON=/app/sa.json
+TELEGRAPH_ACCESS_TOKEN=
+TELEGRAPH_AUTHOR_NAME=Марк Аборчи / AI и Автоматизация
+TELEGRAPH_AUTHOR_URL=https://t.me/aborchi_m
+VK_USER_ACCESS_TOKEN=
+VK_USER_ID=
+TELEGRAM_BOT_TOKEN=
+TELEGRAM_CHANNEL_USERNAME=aborchi_channel
+LOG_LEVEL=INFO
+
+9) DOCKER
+-------------------------------------------
+Dockerfile:
+FROM python:3.11-slim
+WORKDIR /app
+RUN apt-get update && apt-get install -y ca-certificates curl && rm -rf /var/lib/apt/lists/*
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+COPY sa.json /app/sa.json
+COPY . /app
+ENV PYTHONUNBUFFERED=1
+CMD ["python", "-m", "publisher.run"]
+
+requirements.txt:
+gspread
+google-auth
+requests
+python-dotenv
+pytz
+tenacity
+
+docker-compose.yml:
+version: "3.9"
+services:
+  publisher:
+    build: .
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./logs:/app/logs
+
+10) СТРУКТУРА КОДА
+-------------------------------------------
+/publisher
+  /gs/sheets.py
+  /vk/client.py
+  /tg/client.py
+  /telegraph/client.py
+  /core/logger.py
+  /core/retry.py
+  run.py
+
+11) ПСЕВДОКОД
+-------------------------------------------
+RSS:
+  read RSS rows → create telegraph → append short + link → post VK + TG → write URLs → set Published
+
+VK:
+  read VK rows → wall.post → write link → Published
+
+Setka:
+  read Setka rows → sendPhoto → write link → Published
+
+12) ПОДГОТОВКА
+-------------------------------------------
+1) Сервис-аккаунт Google с правами редактирования.
+2) VK Access Token (wall, photos, offline).
+3) Telegram Bot (admin в канале).
+4) Telegraph access_token (или авто-создание).
