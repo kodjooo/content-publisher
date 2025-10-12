@@ -41,12 +41,12 @@ RSS:
   TG Post Link — ссылка на пост Telegram
 
 VK:
-  Title, Content, Image URL, Status, Status Dzen, Iteration, Moderator Note, Lock, Post Link
-  Обработка только для Status = "Revised", после успешной публикации Status = "Published", Post Link заполняется ссылкой на стену, Moderator Note очищается.
+  Title, Content, Image URL, Status, Status Dzen, Iteration, Publish Note, Lock, Post Link
+  Обработка только для Status = "Revised", после успешной публикации Status = "Published", Post Link заполняется ссылкой на стену, Publish Note очищается.
 
 Setka:
-  Title, Content, Image URL, Status, Status Dzen, Iteration, Moderator Note, Lock, Post Link
-  Обработка только для Status = "Revised", после успешной публикации Status = "Published", Post Link заполняется ссылкой на Telegram, Moderator Note очищается.
+  Title, Content, Image URL, Status, Status Dzen, Iteration, Publish Note, Lock, Post Link
+  Обработка только для Status = "Revised", после успешной публикации Status = "Published", Post Link заполняется ссылкой на Telegram, Publish Note очищается.
 
 VK:
   Title, Content, Image URL, VK Post Link, Status
@@ -108,7 +108,7 @@ Setka (Status = "Revised"): Title + Content → sendPhoto(Image URL + caption) �
 -------------------------------------------
 2 повтора (всего 3 попытки), экспоненциальная пауза.
 Логирование в stdout (JSON), писать id строки, вкладку, результат.
-Ошибки в Notes (RSS) и Moderator Note (VK/Setka), статус не меняется.
+Ошибки в Notes (RSS) и Publish Note (VK/Setka), статус не меняется.
 
 8) ENV
 -------------------------------------------

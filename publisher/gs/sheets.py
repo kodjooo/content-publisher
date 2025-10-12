@@ -118,7 +118,7 @@ class SheetsClient:
         updates = {
             "Post Link": link,
             "Status": "Published",
-            "Moderator Note": "",
+            "Publish Note": "",
         }
         self._update_cells(worksheet, header_map, row.row_number, updates)
 
@@ -126,7 +126,7 @@ class SheetsClient:
         """Записывает ошибку для строки VK."""
         worksheet, header_map, _ = self._fetch_rows("VK")
         updates = {
-            "Moderator Note": message,
+            "Publish Note": message,
         }
         self._update_cells(worksheet, header_map, row.row_number, updates)
 
@@ -156,7 +156,7 @@ class SheetsClient:
         updates = {
             "Post Link": link,
             "Status": "Published",
-            "Moderator Note": "",
+            "Publish Note": "",
         }
         self._update_cells(worksheet, header_map, row.row_number, updates)
 
@@ -164,7 +164,7 @@ class SheetsClient:
         """Записывает ошибку для строки Setka."""
         worksheet, header_map, _ = self._fetch_rows("Setka")
         updates = {
-            "Moderator Note": message,
+            "Publish Note": message,
         }
         self._update_cells(worksheet, header_map, row.row_number, updates)
 
