@@ -63,26 +63,39 @@ class TelegraphClient:
         return data["result"]["url"]
 
     def _build_content(self, gpt_post: str, image_url: Optional[str]) -> List[Dict[str, object]]:
-        """Формирует структуру контента."""
-        nodes: List[Dict[str, object]] = []
+        """Формирует структуру контента для Telegraph."""
+        parsed: Optional[List[Dict[str, object]]] = None
+        try:
+            data = json.loads(gpt_post)
+            if isinstance(data, dict):
+                parsed = [data]
+            elif isinstance(data, list):
+                parsed = data  # type: ignore[assignment]
+        except (json.JSONDecodeError, TypeError):
+            parsed = None
+
+        if parsed is not None:
+            nodes = parsed.copy()
+        else:
+            nodes = []
+            text = gpt_post.replace("\r\n", "\n")
+            for paragraph in text.split("\n\n"):
+                cleaned = paragraph.strip()
+                if not cleaned:
+                    continue
+                nodes.append({"tag": "p", "children": [cleaned]})
+
         if image_url:
-            nodes.append(
-                {
-                    "tag": "figure",
-                    "children": [
-                        {
-                            "tag": "img",
-                            "attrs": {"src": image_url},
-                        }
-                    ],
-                }
-            )
-        text = gpt_post.replace("\r\n", "\n")
-        for paragraph in text.split("\n\n"):
-            cleaned = paragraph.strip()
-            if not cleaned:
-                continue
-            nodes.append({"tag": "p", "children": [cleaned]})
+            figure_node: Dict[str, object] = {
+                "tag": "figure",
+                "children": [
+                    {
+                        "tag": "img",
+                        "attrs": {"src": image_url},
+                    }
+                ],
+            }
+            nodes = [figure_node] + nodes
         return nodes
 
     @retry_on_exceptions((requests.RequestException,))
