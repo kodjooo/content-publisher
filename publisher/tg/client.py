@@ -31,7 +31,7 @@ class TelegramClient:
         caption = safe_text
         if telegraph_link:
             link = html.escape(telegraph_link, quote=True)
-            caption = f"{safe_text}\n\n<a href=\"{link}\">Подробнее &gt;</a>" if safe_text else f"<a href=\"{link}\">Подробнее &gt;</a>"
+            caption = f"{safe_text}\n\n<a href=\"{link}\">Читать подробнее &gt;</a>" if safe_text else f"<a href=\"{link}\">Читать подробнее &gt;</a>"
         caption = self._truncate_caption(caption)
         payload = {
             "chat_id": self._channel,

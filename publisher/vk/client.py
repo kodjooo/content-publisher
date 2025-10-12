@@ -31,6 +31,14 @@ class VKClient:
         post_id = self._create_post(message, attachment)
         return f"https://vk.com/wall-{self._group_id}_{post_id}"
 
+    def get_short_link(self, url: str) -> str:
+        """Возвращает сокращённую ссылку через utils.getShortLink."""
+        if not url:
+            return url
+        response = self._api_call("utils.getShortLink", url=url)
+        short = response.get("short_url")
+        return short or url
+
     def _get_upload_url(self) -> str:
         """Возвращает URL загрузки фото."""
         response = self._api_call(

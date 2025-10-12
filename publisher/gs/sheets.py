@@ -78,7 +78,6 @@ class SheetsClient:
         """Обновляет ссылки и статус строки RSS."""
         worksheet, header_map, _ = self._fetch_rows("RSS")
         updates = {
-            "Short Post": self._build_short_post_formula(row.short_post, telegraph_link),
             "Telegraph Link": telegraph_link,
             "VK Post Link": vk_link,
             "TG Post Link": telegram_link,
@@ -206,15 +205,3 @@ class SheetsClient:
             column_index = header_map[header] + 1
             cell = rowcol_to_a1(row_number, column_index)
             worksheet.update(cell, [[value]])
-
-    def _build_short_post_formula(self, short_post: str, link: str) -> str:
-        """Формирует формулу с гиперссылкой “Подробнее >”."""
-        if not link:
-            return short_post
-        escaped = short_post.replace("\\", "\\\\").replace('"', '""')
-        placeholder = escaped.replace("\n", "\\n")
-        link_escaped = link.replace('"', '""')
-        return (
-            f'=CONCATENATE(SUBSTITUTE("{placeholder}", "\\\\n", CHAR(10)), '
-            f'CHAR(10), CHAR(10), HYPERLINK("{link_escaped}", "Подробнее >"))'
-        )

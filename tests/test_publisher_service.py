@@ -33,15 +33,17 @@ def test_process_rss_flow_success(clients):
     )
     sheets.fetch_rss_ready_rows.return_value = [row]
     telegraph.create_page.return_value = "https://telegra.ph/page"
+    vk.get_short_link.return_value = "vk.cc/short"
     vk.publish_post.return_value = "https://vk.com/wall-1_1"
     telegram.send_post.return_value = "https://t.me/channel/1"
 
     service.process_rss_flow()
 
     telegraph.create_page.assert_called_once_with(title="Заголовок статьи", gpt_post=row.gpt_post, image_url=row.image_url)
+    vk.get_short_link.assert_called_once_with("https://telegra.ph/page")
     vk.publish_post.assert_called_once()
     vk_message = vk.publish_post.call_args[0][0]
-    assert "[https://telegra.ph/page|Подробнее >]" in vk_message
+    assert "[vk.cc/short|Читать подробнее >]" in vk_message
     telegram.send_post.assert_called_once_with(row.short_post, row.image_url, "https://telegra.ph/page")
     sheets.update_rss_row.assert_called_once_with(row, "https://telegra.ph/page", "https://vk.com/wall-1_1", "https://t.me/channel/1")
     sheets.write_rss_error.assert_not_called()
@@ -61,6 +63,7 @@ def test_process_rss_flow_uses_existing_telegraph_link(clients):
         status="Revised",
     )
     sheets.fetch_rss_ready_rows.return_value = [row]
+    vk.get_short_link.return_value = "vk.cc/existing"
     vk.publish_post.return_value = "https://vk.com/wall-1_2"
     telegram.send_post.return_value = "https://t.me/channel/2"
 
@@ -68,8 +71,9 @@ def test_process_rss_flow_uses_existing_telegraph_link(clients):
 
     telegraph.create_page.assert_not_called()
     sheets.update_rss_row.assert_called_once_with(row, "https://telegra.ph/existing", "https://vk.com/wall-1_2", "https://t.me/channel/2")
+    vk.get_short_link.assert_called_once_with("https://telegra.ph/existing")
     vk_message = vk.publish_post.call_args[0][0]
-    assert "[https://telegra.ph/existing|Подробнее >]" in vk_message
+    assert "[vk.cc/existing|Читать подробнее >]" in vk_message
 
 
 def test_process_rss_flow_handles_errors(clients):
