@@ -43,7 +43,7 @@ def test_process_rss_flow_success(clients):
     vk.get_short_link.assert_called_once_with("https://telegra.ph/page")
     vk.publish_post.assert_called_once()
     vk_message = vk.publish_post.call_args[0][0]
-    assert "[vk.cc/short|Читать подробнее >]" in vk_message
+    assert "Читать подробнее > vk.cc/short" in vk_message
     telegram.send_post.assert_called_once_with(row.short_post, row.image_url, "https://telegra.ph/page")
     sheets.update_rss_row.assert_called_once_with(row, "https://telegra.ph/page", "https://vk.com/wall-1_1", "https://t.me/channel/1")
     sheets.write_rss_error.assert_not_called()
@@ -73,7 +73,7 @@ def test_process_rss_flow_uses_existing_telegraph_link(clients):
     sheets.update_rss_row.assert_called_once_with(row, "https://telegra.ph/existing", "https://vk.com/wall-1_2", "https://t.me/channel/2")
     vk.get_short_link.assert_called_once_with("https://telegra.ph/existing")
     vk_message = vk.publish_post.call_args[0][0]
-    assert "[vk.cc/existing|Читать подробнее >]" in vk_message
+    assert "Читать подробнее > vk.cc/existing" in vk_message
 
 
 def test_process_rss_flow_handles_errors(clients):

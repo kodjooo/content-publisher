@@ -113,7 +113,7 @@ class PublisherService:
         short = short_post.strip()
         parts = [short] if short else []
         if telegraph_link:
-            parts.append(f"[{telegraph_link}|Читать подробнее >]")
+            parts.append(f"Читать подробнее > {telegraph_link}")
         return "\n\n".join(part for part in parts if part)
 
     def _compose_vk_message(self, title: str, content: str) -> str:
