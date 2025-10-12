@@ -42,7 +42,7 @@ class PublisherService:
             try:
                 telegraph_link = row.telegraph_link
                 if not telegraph_link:
-                    title = self._derive_title(row.gpt_post)
+                    title = self._derive_title(row.gpt_post_title, row.gpt_post)
                     telegraph_link = self._telegraph.create_page(title=title, gpt_post=row.gpt_post, image_url=row.image_url or None)
                 vk_message = self._compose_vk_short_post(row.short_post, telegraph_link)
                 vk_link = self._vk.publish_post(vk_message, row.image_url)
@@ -98,8 +98,10 @@ class PublisherService:
                 self._logger.error("Ошибка Setka", extra={"row": row.row_number, "error": message})
                 self._sheets.write_setka_error(row, message)
 
-    def _derive_title(self, gpt_post: str) -> str:
+    def _derive_title(self, explicit_title: str, gpt_post: str) -> str:
         """Формирует заголовок для Telegraph."""
+        if explicit_title.strip():
+            return explicit_title.strip()[:100]
         text = gpt_post.strip()
         if not text:
             return "Без названия"

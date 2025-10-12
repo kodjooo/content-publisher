@@ -30,6 +30,7 @@ RSS:
   Link — оригинальная ссылка
   Summary — краткое описание
   Short Post — короткая версия для VK/TG
+  GPT Post Title — заголовок для Telegraph
   GPT Post — длинная версия для Telegraph
   Image URL — картинка
   Image Source — источник картинки

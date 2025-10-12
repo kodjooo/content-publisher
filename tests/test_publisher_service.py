@@ -22,6 +22,7 @@ def test_process_rss_flow_success(clients):
     sheets, telegraph, vk, telegram, service = clients
     row = RSSRow(
         row_number=2,
+        gpt_post_title="Заголовок статьи",
         gpt_post="Заголовок статьи\n\nОсновной текст",
         short_post="Короткая версия",
         image_url="https://example.com/image.jpg",
@@ -37,7 +38,7 @@ def test_process_rss_flow_success(clients):
 
     service.process_rss_flow()
 
-    telegraph.create_page.assert_called_once()
+    telegraph.create_page.assert_called_once_with(title="Заголовок статьи", gpt_post=row.gpt_post, image_url=row.image_url)
     vk.publish_post.assert_called_once()
     vk_message = vk.publish_post.call_args[0][0]
     assert "[https://telegra.ph/page|Подробнее >]" in vk_message
@@ -50,6 +51,7 @@ def test_process_rss_flow_uses_existing_telegraph_link(clients):
     sheets, telegraph, vk, telegram, service = clients
     row = RSSRow(
         row_number=3,
+        gpt_post_title="",
         gpt_post="Существующий пост",
         short_post="Коротко",
         image_url="https://example.com/image.jpg",
@@ -74,6 +76,7 @@ def test_process_rss_flow_handles_errors(clients):
     sheets, telegraph, vk, telegram, service = clients
     row = RSSRow(
         row_number=4,
+        gpt_post_title="",
         gpt_post="Текст",
         short_post="Коротко",
         image_url="https://example.com/image.jpg",

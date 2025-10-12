@@ -14,6 +14,7 @@ from publisher.core.retry import retry_on_exceptions
 @dataclass
 class RSSRow:
     row_number: int
+    gpt_post_title: str
     gpt_post: str
     short_post: str
     image_url: str
@@ -61,6 +62,7 @@ class SheetsClient:
             result.append(
                 RSSRow(
                     row_number=row_number,
+                    gpt_post_title=data.get("GPT Post Title", ""),
                     gpt_post=data.get("GPT Post", ""),
                     short_post=data.get("Short Post", ""),
                     image_url=data.get("Image URL", ""),
