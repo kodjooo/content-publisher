@@ -56,7 +56,7 @@ def load_config() -> AppConfig:
 
     google = GoogleSheetsConfig(
         sheet_id=_require("GOOGLE_SHEET_ID"),
-        service_account_json=Path(_require("GOOGLE_SERVICE_ACCOUNT_JSON")),
+        service_account_json=_resolve_path(_require("GOOGLE_SERVICE_ACCOUNT_JSON")),
     )
 
     telegraph = TelegraphConfig(
@@ -84,3 +84,14 @@ def load_config() -> AppConfig:
         telegram=telegram,
         log_level=log_level,
     )
+
+
+def _resolve_path(raw: str) -> Path:
+    """Находит существующий путь к файлу сервисного аккаунта."""
+    primary = Path(raw).expanduser()
+    if primary.exists():
+        return primary
+    alternative = Path.cwd() / raw.lstrip("/")
+    if alternative.exists():
+        return alternative
+    raise FileNotFoundError(f"Файл {raw} не найден (пробованы {primary} и {alternative})")

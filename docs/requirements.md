@@ -11,12 +11,12 @@ A. RSS-флоу
 2) Публикует большую версию (GPT Post) с картинкой (Image URL) в Telegraph, записывает ссылку в Telegraph Link.
 3) Берёт маленькую версию (Short Post), добавляет в конец "\n\nЧитать подробнее: {Telegraph Link}".
 4) Публикует короткую версию + картинку (Image URL) в VK и Telegram.
-5) Сохраняет ссылки публикаций в VK Post Link и Post Link (TG).
+5) Сохраняет ссылки публикаций в VK Post Link и TG Post Link.
 6) Проставляет Status = "Published".
 
 B. Точечные флоу
-- Вкладка VK: публикует Title + Content + Image URL только в VK, сохраняет ссылку в VK Post Link, ставит Published.
-- Вкладка Setka: публикует Title + Content + Image URL только в Telegram, сохраняет ссылку в Post Link, ставит Published.
+- Вкладка VK: обрабатывает строки со Status = "Revised", публикует Title + Content + Image URL в VK, сохраняет ссылку в Post Link, ставит Status = "Published".
+- Вкладка Setka: обрабатывает строки со Status = "Revised", публикует Title + Content + Image URL в Telegram, сохраняет ссылку в Post Link, ставит Status = "Published".
 
 1) GOOGLE SHEETS
 -------------------------------------------
@@ -24,13 +24,29 @@ Sheet ID: 1bjJiP24WnkierEFqZy00Hw9kSR4ESmXgVetrBeTULnU
 Вкладки: RSS, VK, Setka
 
 RSS:
-  GPT Post — длинная версия для Telegraph
+  Date — дата материала
+  Source — источник
+  Title — заголовок
+  Link — оригинальная ссылка
+  Summary — краткое описание
   Short Post — короткая версия для VK/TG
+  GPT Post — длинная версия для Telegraph
   Image URL — картинка
-  Telegraph Link — ссылка на статью
+  Image Source — источник картинки
+  Score — приоритет
+  Status — строки со значением "Revised" подлежат обработке, после публикации меняется на "Published"
+  Notes — текст ошибки (заполняется при неудаче)
+  Telegraph Link — ссылка на страницу Telegraph
   VK Post Link — ссылка на пост VK
-  Post Link — ссылка на пост TG
-  Status — Published после публикации
+  TG Post Link — ссылка на пост Telegram
+
+VK:
+  Title, Content, Image URL, Status, Status Dzen, Iteration, Moderator Note, Lock, Post Link
+  Обработка только для Status = "Revised", после успешной публикации Status = "Published", Post Link заполняется ссылкой на стену, Moderator Note очищается.
+
+Setka:
+  Title, Content, Image URL, Status, Status Dzen, Iteration, Moderator Note, Lock, Post Link
+  Обработка только для Status = "Revised", после успешной публикации Status = "Published", Post Link заполняется ссылкой на Telegram, Moderator Note очищается.
 
 VK:
   Title, Content, Image URL, VK Post Link, Status
@@ -85,14 +101,14 @@ Short Post + "\n\nЧитать подробнее: {Telegraph Link}"
 
 6) ОБРАБОТКА VK/SETKA
 -------------------------------------------
-VK: Title + Content → wall.post (owner_id=-group_id) с Image URL → VK Post Link, Status=Published
-Setka: Title + Content → sendPhoto(Image URL + caption) → Post Link, Status=Published
+VK (Status = "Revised"): Title + Content → wall.post (owner_id=-group_id) с Image URL → Post Link, Status=Published
+Setka (Status = "Revised"): Title + Content → sendPhoto(Image URL + caption) → Post Link, Status=Published
 
 7) ОШИБКИ, ЛОГИ, РЕТРАИ
 -------------------------------------------
 2 повтора (всего 3 попытки), экспоненциальная пауза.
 Логирование в stdout (JSON), писать id строки, вкладку, результат.
-Ошибки в Notes, статус не меняется.
+Ошибки в Notes (RSS) и Moderator Note (VK/Setka), статус не меняется.
 
 8) ENV
 -------------------------------------------

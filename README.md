@@ -10,6 +10,8 @@
 - `publisher/run.py` — точка входа сервиса.
 - `tests/` — модульные тесты.
 
+> Обрабатываются только строки со статусом `Revised`; успешные публикации переводятся в `Published`.
+
 ## Подготовка окружения
 1. Скопируйте `.env.example` в `.env` и заполните токены (`VK_USER_ACCESS_TOKEN`, `VK_GROUP_ID`, `TELEGRAM_BOT_TOKEN`, `TELEGRAPH_ACCESS_TOKEN` и т.д.).
 2. Разместите сервисный аккаунт Google по пути, указанному в переменной `GOOGLE_SERVICE_ACCOUNT_JSON`.

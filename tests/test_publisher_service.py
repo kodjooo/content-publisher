@@ -96,7 +96,7 @@ def test_process_vk_flow_success(clients):
         content="Содержимое",
         image_url="https://example.com/image.jpg",
         post_link="",
-        status="",
+        status="Revised",
     )
     sheets.fetch_vk_rows.return_value = [row]
     vk.publish_post.return_value = "https://vk.com/wall-1_3"
@@ -115,7 +115,7 @@ def test_process_setka_flow_success(clients):
         content="Содержимое",
         image_url="https://example.com/image.jpg",
         post_link="",
-        status="",
+        status="Revised",
     )
     sheets.fetch_setka_rows.return_value = [row]
     telegram.send_post.return_value = "https://t.me/channel/3"

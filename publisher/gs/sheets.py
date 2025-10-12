@@ -66,7 +66,7 @@ class SheetsClient:
                     image_url=data.get("Image URL", ""),
                     telegraph_link=data.get("Telegraph Link", ""),
                     vk_post_link=data.get("VK Post Link", ""),
-                    telegram_post_link=data.get("Post Link", ""),
+                    telegram_post_link=data.get("TG Post Link", ""),
                     status=status,
                 )
             )
@@ -78,7 +78,7 @@ class SheetsClient:
         updates = {
             "Telegraph Link": telegraph_link,
             "VK Post Link": vk_link,
-            "Post Link": telegram_link,
+            "TG Post Link": telegram_link,
             "Status": "Published",
             "Notes": "",
         }
@@ -98,7 +98,7 @@ class SheetsClient:
         result: List[VKRow] = []
         for row_number, data in rows:
             status = data.get("Status", "")
-            if status.lower() == "published":
+            if status.lower() != "revised":
                 continue
             result.append(
                 VKRow(
@@ -106,7 +106,7 @@ class SheetsClient:
                     title=data.get("Title", ""),
                     content=data.get("Content", ""),
                     image_url=data.get("Image URL", ""),
-                    post_link=data.get("VK Post Link", ""),
+                    post_link=data.get("Post Link", ""),
                     status=status,
                 )
             )
@@ -116,9 +116,9 @@ class SheetsClient:
         """Отмечает строку VK как опубликованную."""
         worksheet, header_map, _ = self._fetch_rows("VK")
         updates = {
-            "VK Post Link": link,
+            "Post Link": link,
             "Status": "Published",
-            "Notes": "",
+            "Moderator Note": "",
         }
         self._update_cells(worksheet, header_map, row.row_number, updates)
 
@@ -126,7 +126,7 @@ class SheetsClient:
         """Записывает ошибку для строки VK."""
         worksheet, header_map, _ = self._fetch_rows("VK")
         updates = {
-            "Notes": message,
+            "Moderator Note": message,
         }
         self._update_cells(worksheet, header_map, row.row_number, updates)
 
@@ -136,7 +136,7 @@ class SheetsClient:
         result: List[SetkaRow] = []
         for row_number, data in rows:
             status = data.get("Status", "")
-            if status.lower() == "published":
+            if status.lower() != "revised":
                 continue
             result.append(
                 SetkaRow(
@@ -156,7 +156,7 @@ class SheetsClient:
         updates = {
             "Post Link": link,
             "Status": "Published",
-            "Notes": "",
+            "Moderator Note": "",
         }
         self._update_cells(worksheet, header_map, row.row_number, updates)
 
@@ -164,7 +164,7 @@ class SheetsClient:
         """Записывает ошибку для строки Setka."""
         worksheet, header_map, _ = self._fetch_rows("Setka")
         updates = {
-            "Notes": message,
+            "Moderator Note": message,
         }
         self._update_cells(worksheet, header_map, row.row_number, updates)
 
@@ -202,4 +202,4 @@ class SheetsClient:
                 continue
             column_index = header_map[header] + 1
             cell = rowcol_to_a1(row_number, column_index)
-            worksheet.update(cell, value)
+            worksheet.update(cell, [[value]])
