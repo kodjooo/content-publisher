@@ -11,7 +11,7 @@
 - `tests/` — модульные тесты.
 
 ## Подготовка окружения
-1. Скопируйте `.env.example` в `.env` и заполните токены (`VK_USER_ACCESS_TOKEN`, `TELEGRAM_BOT_TOKEN`, `TELEGRAPH_ACCESS_TOKEN` и т.д.).
+1. Скопируйте `.env.example` в `.env` и заполните токены (`VK_USER_ACCESS_TOKEN`, `VK_GROUP_ID`, `TELEGRAM_BOT_TOKEN`, `TELEGRAPH_ACCESS_TOKEN` и т.д.).
 2. Разместите сервисный аккаунт Google по пути, указанному в переменной `GOOGLE_SERVICE_ACCOUNT_JSON`.
 3. Установите зависимости:
    ```bash
@@ -27,6 +27,14 @@
   ```bash
   docker compose up --build
   ```
+
+## Развёртывание на удалённом сервере
+- Установите Docker и Docker Compose (`curl -fsSL https://get.docker.com | sh`, затем `sudo usermod -aG docker <user>`).
+- Склонируйте репозиторий: `git clone git@github.com:kodjooo/content-publisher.git && cd content-publisher`.
+- Заполните `.env` (секреты передавайте безопасным каналом, файл в git не коммитится).
+- При необходимости скопируйте файл сервисного аккаунта Google в `/app/sa.json` внутри проекта или настройте том.
+- Запустите сервис: `docker compose up -d --build`.
+- Логи доступны через `docker compose logs -f`; обновление — `git pull`, далее `docker compose up -d --build`.
 
 ## Тесты
 ```bash

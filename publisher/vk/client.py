@@ -21,7 +21,7 @@ class VKClient:
 
     def __init__(self, config: VKConfig) -> None:
         self._access_token = config.user_access_token
-        self._user_id = config.user_id
+        self._group_id = config.group_id
         self._session = requests.Session()
 
     def publish_post(self, message: str, image_url: str) -> str:
@@ -29,13 +29,13 @@ class VKClient:
         upload_url = self._get_upload_url()
         attachment = self._upload_photo(upload_url, image_url)
         post_id = self._create_post(message, attachment)
-        return f"https://vk.com/wall{self._user_id}_{post_id}"
+        return f"https://vk.com/wall-{self._group_id}_{post_id}"
 
     def _get_upload_url(self) -> str:
         """Возвращает URL загрузки фото."""
         response = self._api_call(
             "photos.getWallUploadServer",
-            owner_id=self._user_id,
+            group_id=self._group_id,
         )
         upload_url = response["upload_url"]
         return upload_url
@@ -49,7 +49,7 @@ class VKClient:
             raise VKError(f"Некорректный ответ при загрузке фото: {data}")
         saved = self._api_call(
             "photos.saveWallPhoto",
-            owner_id=self._user_id,
+            group_id=self._group_id,
             photo=data["photo"],
             server=data["server"],
             hash=data["hash"],
@@ -63,7 +63,8 @@ class VKClient:
         """Создаёт запись на стене и возвращает идентификатор поста."""
         response = self._api_call(
             "wall.post",
-            owner_id=self._user_id,
+            owner_id=-self._group_id,
+            from_group=1,
             message=message,
             attachments=attachment,
         )

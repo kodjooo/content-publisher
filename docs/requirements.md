@@ -52,18 +52,18 @@ createPage параметры:
 
 На выходе: url → Telegraph Link.
 
-3) VK (личная страница)
+3) VK (сообщество)
 -------------------------------------------
-Нужен VK_USER_ACCESS_TOKEN с правами wall,photos,offline.
+Нужен VK_USER_ACCESS_TOKEN с правами wall,photos,offline и доступом к нужной группе.
 
 Загрузка фото:
-1) photos.getWallUploadServer
+1) photos.getWallUploadServer(group_id)
 2) POST на upload_url (multipart, поле photo)
-3) photos.saveWallPhoto → owner_id, id
+3) photos.saveWallPhoto(group_id) → owner_id, id
 
 Публикация:
-wall.post(owner_id, message, attachments=photo{owner_id}_{id})
-Ссылка: https://vk.com/wall{owner_id}_{post_id} → VK Post Link
+wall.post(owner_id=-group_id, from_group=1, message, attachments=photo{owner_id}_{id})
+Ссылка: https://vk.com/wall-{group_id}_{post_id} → VK Post Link
 
 4) TELEGRAM (канал, bot → admin)
 -------------------------------------------
@@ -85,7 +85,7 @@ Short Post + "\n\nЧитать подробнее: {Telegraph Link}"
 
 6) ОБРАБОТКА VK/SETKA
 -------------------------------------------
-VK: Title + Content → wall.post с Image URL → VK Post Link, Status=Published
+VK: Title + Content → wall.post (owner_id=-group_id) с Image URL → VK Post Link, Status=Published
 Setka: Title + Content → sendPhoto(Image URL + caption) → Post Link, Status=Published
 
 7) ОШИБКИ, ЛОГИ, РЕТРАИ
@@ -102,7 +102,7 @@ TELEGRAPH_ACCESS_TOKEN=
 TELEGRAPH_AUTHOR_NAME=Марк Аборчи / AI и Автоматизация
 TELEGRAPH_AUTHOR_URL=https://t.me/aborchi_m
 VK_USER_ACCESS_TOKEN=
-VK_USER_ID=
+VK_GROUP_ID=
 TELEGRAM_BOT_TOKEN=
 TELEGRAM_CHANNEL_USERNAME=aborchi_channel
 LOG_LEVEL=INFO

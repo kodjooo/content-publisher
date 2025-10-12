@@ -7,3 +7,4 @@ __pycache__/
 logs/*
 !logs/.gitkeep
 .cursor/
+app/google-credentials.json

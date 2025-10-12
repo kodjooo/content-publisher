@@ -24,7 +24,7 @@ class TelegraphConfig:
 @dataclass(frozen=True)
 class VKConfig:
     user_access_token: str
-    user_id: str
+    group_id: int
 
 
 @dataclass(frozen=True)
@@ -67,7 +67,7 @@ def load_config() -> AppConfig:
 
     vk = VKConfig(
         user_access_token=_require("VK_USER_ACCESS_TOKEN"),
-        user_id=_require("VK_USER_ID"),
+        group_id=int(_require("VK_GROUP_ID")),
     )
 
     telegram = TelegramConfig(
