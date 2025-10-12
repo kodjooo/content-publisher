@@ -10,7 +10,7 @@
 - `publisher/run.py` — точка входа сервиса.
 - `tests/` — модульные тесты.
 
-> Обрабатываются только строки со статусом `Revised`; успешные публикации переводятся в `Published`, ошибки записываются в `Notes` (RSS) и `Publish Note` (VK/Setka). Заголовок для Telegraph берётся из столбца `GPT Post Title`; ссылки “Читать подробнее >” формируются в VK через `utils.getShortLink`, в Telegram — HTML-ссылкой.
+> Обрабатываются только строки со статусом `Revised`; успешные публикации переводятся в `Published`, ошибки записываются в `Notes` (RSS) и `Publish Note` (VK/Setka). Заголовок для Telegraph берётся из столбца `GPT Post Title`; короткие тексты очищаются от заранее вставленного “Читать подробнее >”, после чего ссылки формируются: в VK — через `utils.getShortLink` (`Читать подробнее > vk.cc/...`), в Telegram — HTML-гиперссылкой.
 
 ## Подготовка окружения
 1. Скопируйте `.env.example` в `.env` и заполните токены (`VK_USER_ACCESS_TOKEN`, `VK_GROUP_ID`, `TELEGRAM_BOT_TOKEN`, `TELEGRAPH_ACCESS_TOKEN` и т.д.).
