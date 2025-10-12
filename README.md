@@ -22,7 +22,7 @@
 
 ## Запуск
 ```bash
-docker compose up --build
+docker compose run --rm publisher
 ```
 
 ## Развёртывание на удалённом сервере
@@ -30,8 +30,9 @@ docker compose up --build
 - Склонируйте репозиторий: `git clone git@github.com:kodjooo/content-publisher.git && cd content-publisher`.
 - Заполните `.env` (секреты передавайте безопасным каналом, файл в git не коммитится).
 - При необходимости скопируйте файл сервисного аккаунта Google в `/app/sa.json` внутри проекта или настройте том.
-- Запустите сервис: `docker compose up -d --build`.
-- Логи доступны через `docker compose logs -f`; обновление — `git pull`, далее `docker compose up -d --build`.
+- Соберите образ: `docker compose build`.
+- Запустите однократное выполнение: `docker compose run --rm publisher`.
+- Для просмотра логов во время выполнения используйте `docker compose logs -f`.
 
 ## Тесты
 ```bash

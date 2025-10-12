@@ -1,6 +1,6 @@
 """Клиент VK API."""
 
-from typing import Dict
+from typing import Dict, Optional, Tuple
 
 import requests
 from requests import Response
@@ -42,17 +42,24 @@ class VKClient:
 
     def _upload_photo(self, upload_url: str, image_url: str) -> str:
         """Загружает фото и возвращает идентификатор вложения."""
-        image_bytes, mime = self._download_image(image_url)
-        upload_response = self._post(upload_url, files={"photo": ("image", image_bytes, mime)})
+        image_bytes, mime, filename = self._download_image(image_url)
+        from io import BytesIO
+        files = {"photo": (filename, BytesIO(image_bytes), mime or "image/jpeg")}
+        upload_response = self._post(upload_url, files=files)
         data = upload_response.json()
-        if "photo" not in data:
-            raise VKError(f"Некорректный ответ при загрузке фото: {data}")
+        photo_payload = data.get("photo")
+        if not photo_payload or photo_payload in ("[]", []):
+            raise VKError(f"Сервер загрузки VK вернул пустой результат: {data}")
+        server = data.get("server")
+        upload_hash = data.get("hash")
+        if server is None or upload_hash is None:
+            raise VKError(f"В ответе VK отсутствуют обязательные поля: {data}")
         saved = self._api_call(
             "photos.saveWallPhoto",
             group_id=self._group_id,
-            photo=data["photo"],
-            server=data["server"],
-            hash=data["hash"],
+            photo=photo_payload,
+            server=server,
+            hash=upload_hash,
         )
         if not saved:
             raise VKError("VK не вернул сохранённое фото")
@@ -71,11 +78,12 @@ class VKClient:
         post_id = response["post_id"]
         return post_id
 
-    def _download_image(self, image_url: str) -> tuple[bytes, str]:
+    def _download_image(self, image_url: str) -> Tuple[bytes, Optional[str], str]:
         """Загружает изображение по URL."""
         response = self._get(image_url, stream=True)
-        content_type = response.headers.get("Content-Type", "image/jpeg")
-        return response.content, content_type
+        content_type = response.headers.get("Content-Type")
+        filename = self._derive_filename(image_url, content_type)
+        return response.content, content_type, filename
 
     @retry_on_exceptions((requests.RequestException,))
     def _api_call(self, method: str, **params) -> Dict[str, object]:
@@ -106,3 +114,17 @@ class VKClient:
         response = self._session.get(url, timeout=20, **kwargs)
         response.raise_for_status()
         return response
+
+    def _derive_filename(self, image_url: str, content_type: Optional[str]) -> str:
+        """Определяет имя файла для загрузки в VK."""
+        from urllib.parse import urlparse
+        import mimetypes
+        path = urlparse(image_url).path
+        name = path.rsplit("/", 1)[-1] if "/" in path else ""
+        if not name:
+            extension = mimetypes.guess_extension(content_type or "") or ".jpg"
+            return f"image{extension}"
+        if "." not in name:
+            extension = mimetypes.guess_extension(content_type or "") or ".jpg"
+            return f"{name}{extension}"
+        return name

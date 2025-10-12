@@ -1,8 +1,6 @@
-version: "3.9"
 services:
   publisher:
     build: .
-    restart: unless-stopped
     env_file:
       - .env
     volumes:
