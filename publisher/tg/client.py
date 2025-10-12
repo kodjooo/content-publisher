@@ -25,13 +25,17 @@ class TelegramClient:
         self._channel = config.channel_username if config.channel_username.startswith("@") else f"@{config.channel_username}"
         self._session = requests.Session()
 
-    def send_post(self, text: str, image_url: str, telegraph_link: Optional[str] = None) -> str:
+    def send_post(self, text: str, image_url: str, telegraph_link: Optional[str] = None, add_spacing: bool = False) -> str:
         """Отправляет пост и возвращает ссылку."""
         safe_text = html.escape(text.strip())
         caption = safe_text
         if telegraph_link:
             link = html.escape(telegraph_link, quote=True)
-            caption = f"{safe_text}\n\n<a href=\"{link}\">Читать подробнее &gt;</a>" if safe_text else f"<a href=\"{link}\">Читать подробнее &gt;</a>"
+            spacer = "\n\n" if add_spacing and safe_text else ""
+            if safe_text:
+                caption = f"{safe_text}{spacer}<a href=\"{link}\">Читать подробнее &gt;</a>"
+            else:
+                caption = f"<a href=\"{link}\">Читать подробнее &gt;</a>"
         caption = self._truncate_caption(caption)
         payload = {
             "chat_id": self._channel,

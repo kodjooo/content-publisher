@@ -48,7 +48,7 @@ class PublisherService:
                 short_link = self._vk.get_short_link(telegraph_link) if telegraph_link else telegraph_link
                 vk_message = self._compose_vk_short_post(sanitized_short, short_link)
                 vk_link = self._vk.publish_post(vk_message, row.image_url)
-                telegram_link = self._telegram.send_post(sanitized_short, row.image_url, telegraph_link)
+                telegram_link = self._telegram.send_post(sanitized_short, row.image_url, telegraph_link, add_spacing=True)
                 self._sheets.update_rss_row(row, telegraph_link, vk_link, telegram_link)
                 self._logger.info(
                     "RSS опубликован",
