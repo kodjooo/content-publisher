@@ -53,10 +53,15 @@ class VKClient:
         image_bytes, mime, filename = self._download_image(image_url)
         from io import BytesIO
         files = {"photo": (filename, BytesIO(image_bytes), mime or "image/jpeg")}
-        upload_response = self._post(upload_url, files=files)
-        data = upload_response.json()
-        photo_payload = data.get("photo")
-        if not photo_payload or photo_payload in ("[]", []):
+        data = None
+        photo_payload = None
+        for attempt in range(3):
+            upload_response = self._post(upload_url, files=files)
+            data = upload_response.json()
+            photo_payload = data.get("photo")
+            if photo_payload and photo_payload not in ("[]", []):
+                break
+        else:
             raise VKError(f"Сервер загрузки VK вернул пустой результат: {data}")
         server = data.get("server")
         upload_hash = data.get("hash")
