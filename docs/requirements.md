@@ -97,7 +97,8 @@ caption ≤ 1024 символов.
 
 5) СБОРКА ТЕКСТА RSS
 -------------------------------------------
-Short Post + "\n\nЧитать подробнее: {Telegraph Link}"
+Short Post + "\n\nПодробнее >" (строка оформляется как `[https://...|Подробнее >]` для VK и `<a href="...">Подробнее &gt;</a>` для Telegram).
+Ячейка `Short Post` после обработки дополняется формулой с гиперссылкой `Подробнее >`.
 
 6) ОБРАБОТКА VK/SETKA
 -------------------------------------------
@@ -120,7 +121,7 @@ TELEGRAPH_AUTHOR_URL=https://t.me/aborchi_m
 VK_USER_ACCESS_TOKEN=
 VK_GROUP_ID=
 TELEGRAM_BOT_TOKEN=
-TELEGRAM_CHANNEL_USERNAME=aborchi_channel
+TELEGRAM_CHANNEL_USERNAME=aborchi_m
 LOG_LEVEL=INFO
 
 9) DOCKER

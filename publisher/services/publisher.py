@@ -44,7 +44,7 @@ class PublisherService:
                 if not telegraph_link:
                     title = self._derive_title(row.gpt_post)
                     telegraph_link = self._telegraph.create_page(title=title, gpt_post=row.gpt_post, image_url=row.image_url or None)
-                vk_message = self._compose_short_post(row.short_post, telegraph_link)
+                vk_message = self._compose_vk_short_post(row.short_post, telegraph_link)
                 vk_link = self._vk.publish_post(vk_message, row.image_url)
                 telegram_link = self._telegram.send_post(row.short_post, row.image_url, telegraph_link)
                 self._sheets.update_rss_row(row, telegraph_link, vk_link, telegram_link)
@@ -105,12 +105,13 @@ class PublisherService:
             return "Без названия"
         return text[:100]
 
-    def _compose_short_post(self, short_post: str, telegraph_link: str) -> str:
-        """Возвращает короткий пост с ссылкой."""
+    def _compose_vk_short_post(self, short_post: str, telegraph_link: str) -> str:
+        """Возвращает короткий пост с ссылкой для VK."""
         short = short_post.strip()
+        parts = [short] if short else []
         if telegraph_link:
-            return f"{short}\n\nЧитать подробнее: {telegraph_link}"
-        return short
+            parts.append(f"[{telegraph_link}|Подробнее >]")
+        return "\n\n".join(part for part in parts if part)
 
     def _compose_vk_message(self, title: str, content: str) -> str:
         """Собирает текст для VK или Telegram."""

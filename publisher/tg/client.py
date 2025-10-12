@@ -1,5 +1,6 @@
 """Клиент Telegram Bot API."""
 
+import html
 from typing import Optional
 
 import requests
@@ -26,9 +27,11 @@ class TelegramClient:
 
     def send_post(self, text: str, image_url: str, telegraph_link: Optional[str] = None) -> str:
         """Отправляет пост и возвращает ссылку."""
-        caption = text
+        safe_text = html.escape(text.strip())
+        caption = safe_text
         if telegraph_link:
-            caption = f"{text}\n\nЧитать подробнее: {telegraph_link}"
+            link = html.escape(telegraph_link, quote=True)
+            caption = f"{safe_text}\n\n<a href=\"{link}\">Подробнее &gt;</a>" if safe_text else f"<a href=\"{link}\">Подробнее &gt;</a>"
         caption = self._truncate_caption(caption)
         payload = {
             "chat_id": self._channel,
