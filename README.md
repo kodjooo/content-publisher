@@ -1,6 +1,6 @@
 # Модуль публикации контента
 
-Сервис обрабатывает очереди публикаций из Google Sheets и размещает контент в Telegra.ph, VK и Telegram. Запуск осуществляется командой `python -m publisher.run`.
+Сервис обрабатывает очереди публикаций из Google Sheets и размещает контент в Telegra.ph, VK и Telegram. Базовый способ запуска — через Docker Compose (`docker compose up --build`).
 
 ## Структура
 - `publisher/config.py` — загрузка конфигурации из `.env`.
@@ -15,20 +15,15 @@
 ## Подготовка окружения
 1. Скопируйте `.env.example` в `.env` и заполните токены (`VK_USER_ACCESS_TOKEN`, `VK_GROUP_ID`, `TELEGRAM_BOT_TOKEN`, `TELEGRAPH_ACCESS_TOKEN` и т.д.).
 2. Разместите сервисный аккаунт Google по пути, указанному в переменной `GOOGLE_SERVICE_ACCOUNT_JSON`.
-3. Установите зависимости:
+3. Соберите образ и установите зависимости внутри контейнера:
    ```bash
-   python -m venv .venv
-   source .venv/bin/activate
-   pip install --upgrade pip
-   pip install -r requirements.txt
+   docker compose build
    ```
 
 ## Запуск
-- Локально: `python -m publisher.run`
-- В Docker:
-  ```bash
-  docker compose up --build
-  ```
+```bash
+docker compose up --build
+```
 
 ## Развёртывание на удалённом сервере
 - Установите Docker и Docker Compose (`curl -fsSL https://get.docker.com | sh`, затем `sudo usermod -aG docker <user>`).
@@ -40,5 +35,5 @@
 
 ## Тесты
 ```bash
-pytest
+docker compose run --rm publisher pytest
 ```
