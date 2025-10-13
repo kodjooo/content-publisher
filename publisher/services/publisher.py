@@ -70,17 +70,17 @@ class PublisherService:
         if not rows:
             self._logger.info("Нет строк VK для публикации")
             return
-        for row in rows:
-            self._logger.info("Начало обработки VK", extra={"row": row.row_number})
-            try:
-                message = self._compose_vk_message(row.title, row.content)
-                link = self._vk.publish_post(message, row.image_url)
-                self._sheets.mark_vk_published(row, link)
-                self._logger.info("VK опубликован", extra={"row": row.row_number, "vk_link": link})
-            except Exception as exc:  # noqa: BLE001
-                message = str(exc)
-                self._logger.error("Ошибка VK", extra={"row": row.row_number, "error": message})
-                self._sheets.write_vk_error(row, message)
+        row = rows[0]
+        self._logger.info("Начало обработки VK", extra={"row": row.row_number})
+        try:
+            message = self._compose_vk_message(row.title, row.content)
+            link = self._vk.publish_post(message, row.image_url)
+            self._sheets.mark_vk_published(row, link)
+            self._logger.info("VK опубликован", extra={"row": row.row_number, "vk_link": link})
+        except Exception as exc:  # noqa: BLE001
+            message = str(exc)
+            self._logger.error("Ошибка VK", extra={"row": row.row_number, "error": message})
+            self._sheets.write_vk_error(row, message)
 
     def process_setka_flow(self) -> None:
         """Обрабатывает точечные посты Telegram."""
@@ -88,17 +88,17 @@ class PublisherService:
         if not rows:
             self._logger.info("Нет строк Setka для публикации")
             return
-        for row in rows:
-            self._logger.info("Начало обработки Setka", extra={"row": row.row_number})
-            try:
-                message = self._compose_vk_message(row.title, row.content)
-                link = self._telegram.send_post(message, row.image_url)
-                self._sheets.mark_setka_published(row, link)
-                self._logger.info("Setka опубликован", extra={"row": row.row_number, "telegram_link": link})
-            except Exception as exc:  # noqa: BLE001
-                message = str(exc)
-                self._logger.error("Ошибка Setka", extra={"row": row.row_number, "error": message})
-                self._sheets.write_setka_error(row, message)
+        row = rows[0]
+        self._logger.info("Начало обработки Setka", extra={"row": row.row_number})
+        try:
+            message = self._compose_vk_message(row.title, row.content)
+            link = self._telegram.send_post(message, row.image_url)
+            self._sheets.mark_setka_published(row, link)
+            self._logger.info("Setka опубликован", extra={"row": row.row_number, "telegram_link": link})
+        except Exception as exc:  # noqa: BLE001
+            message = str(exc)
+            self._logger.error("Ошибка Setka", extra={"row": row.row_number, "error": message})
+            self._sheets.write_setka_error(row, message)
 
     def _derive_title(self, explicit_title: str, gpt_post: str) -> str:
         """Формирует заголовок для Telegraph."""
