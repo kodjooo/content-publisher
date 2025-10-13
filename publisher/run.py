@@ -32,6 +32,10 @@ def main() -> None:
 
     moscow_tz = pytz.timezone("Europe/Moscow")
 
+    if config.run_on_start:
+        logger.info("Тестовый запуск по стартовой конфигурации")
+        _process_all(service, logger)
+
     last_runs_rss: Dict[int, date] = {}
     last_run_vk: Tuple[date, int] | None = None
     last_run_setka: Tuple[date, int] | None = None

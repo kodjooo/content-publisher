@@ -45,6 +45,7 @@ class AppConfig:
     rss_hours: Tuple[int, int]
     vk_hour: int
     setka_hour: int
+    run_on_start: bool
 
 
 def _require(env_name: str) -> str:
@@ -96,6 +97,7 @@ def load_config() -> AppConfig:
         rss_hours=(8, 20),
         vk_hour=18,
         setka_hour=18,
+        run_on_start=_parse_bool(os.getenv("RUN_ON_START", "false")),
     )
 
 
@@ -131,6 +133,10 @@ def _parse_publish_days(raw: str) -> Set[int]:
     if not result:
         raise ValueError("Список дней публикации не может быть пустым")
     return result
+
+
+def _parse_bool(raw: str) -> bool:
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
 def _resolve_path(raw: str) -> Path:
