@@ -34,6 +34,20 @@ docker compose run --rm publisher
 - Запустите однократное выполнение: `docker compose run --rm publisher`.
 - Для просмотра логов во время выполнения используйте `docker compose logs -f`.
 
+### Автозапуск по расписанию
+Сам сервис рассчитывает, что его запускает внешнее расписание (например, cron). Запускайте контейнер `docker compose run --rm publisher` в нужные моменты, а внутренняя логика уже проверит, попадает ли текущее время в окна публикации (RSS: 08:00/20:00 мск, VK/Setka: 18:00 мск по указанным дням).
+
+Пример кронтаба для сервера в часовом поясе МСК:
+
+```
+# RSS в 08:00 и 20:00
+0 8,20 * * * cd /path/to/content-publisher && docker compose run --rm publisher >> /var/log/content-publisher.log 2>&1
+# VK/Setka в 18:00
+0 18 * * * cd /path/to/content-publisher && docker compose run --rm publisher >> /var/log/content-publisher.log 2>&1
+```
+
+Если сервер работает в другом часовом поясе — настройте cron с учётом смещения или используйте `TZ='Europe/Moscow'` в записи.
+
 ## Тесты
 ```bash
 docker compose run --rm publisher pytest
