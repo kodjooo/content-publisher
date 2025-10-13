@@ -44,7 +44,7 @@ class PublisherService:
                 if not telegraph_link:
                     title = self._derive_title(row.gpt_post_title, row.gpt_post)
                     telegraph_link = self._telegraph.create_page(title=title, gpt_post=row.gpt_post, image_url=row.image_url or None)
-                sanitized_short = self._sanitize_short_post(row.short_post)
+                sanitized_short = self._prepare_short_post(row.short_post, row.gpt_post_title)
                 short_link = self._vk.get_short_link(telegraph_link) if telegraph_link else telegraph_link
                 vk_message = self._compose_vk_short_post(sanitized_short, short_link)
                 vk_link = self._vk.publish_post(vk_message, row.image_url)
@@ -117,20 +117,27 @@ class PublisherService:
             parts.append(f"Читать подробнее > {telegraph_link}")
         return "\n\n".join(part for part in parts if part)
 
-    def _sanitize_short_post(self, short_post: str) -> str:
-        """Убирает существующую подпись 'Читать подробнее >' из конца короткого поста."""
+    def _prepare_short_post(self, short_post: str, title: str) -> str:
+        """Удаляет старую подпись и добавляет хэштег с заголовком."""
         lines = [line.rstrip() for line in short_post.strip().splitlines()]
         while lines and not lines[-1]:
             lines.pop()
         if not lines:
-            return ""
-        last = lines[-1]
-        lowered = last.lower()
-        if "читать подробнее" in lowered:
-            lines.pop()
-            while lines and not lines[-1]:
+            body = ""
+        else:
+            last = lines[-1]
+            lowered = last.lower()
+            if "читать подробнее" in lowered:
                 lines.pop()
-        return "\n".join(lines)
+                while lines and not lines[-1]:
+                    lines.pop()
+            body = "\n".join(lines)
+        header_lines = ["#Обзор_Новостей"]
+        normalized_title = title.strip()
+        if normalized_title:
+            header_lines.append(normalized_title)
+        content_lines = [part for part in [body] if part]
+        return "\n".join(header_lines + ([""] if content_lines else []) + content_lines)
 
     def _compose_vk_message(self, title: str, content: str) -> str:
         """Собирает текст для VK или Telegram."""
