@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Set, Tuple
 
 from dotenv import load_dotenv
 import os
@@ -40,6 +40,11 @@ class AppConfig:
     vk: VKConfig
     telegram: TelegramConfig
     log_level: str
+    vk_schedule_days: Set[int]
+    setka_schedule_days: Set[int]
+    rss_hours: Tuple[int, int]
+    vk_hour: int
+    setka_hour: int
 
 
 def _require(env_name: str) -> str:
@@ -77,13 +82,55 @@ def load_config() -> AppConfig:
 
     log_level = os.getenv("LOG_LEVEL", "INFO")
 
+    vk_days = _parse_publish_days(os.getenv("VK_PUBLISH_DAYS", "mon,tue,wed,thu,fri,sat,sun"))
+    setka_days = _parse_publish_days(os.getenv("SETKA_PUBLISH_DAYS", "mon,tue,wed,thu,fri,sat,sun"))
+
     return AppConfig(
         google=google,
         telegraph=telegraph,
         vk=vk,
         telegram=telegram,
         log_level=log_level,
+        vk_schedule_days=vk_days,
+        setka_schedule_days=setka_days,
+        rss_hours=(8, 20),
+        vk_hour=18,
+        setka_hour=18,
     )
+
+
+def _parse_publish_days(raw: str) -> Set[int]:
+    """Преобразует список дней недели в набор индексов (0=понедельник)."""
+    day_map = {
+        "mon": 0,
+        "monday": 0,
+        "tue": 1,
+        "tues": 1,
+        "tuesday": 1,
+        "wed": 2,
+        "wednesday": 2,
+        "thu": 3,
+        "thur": 3,
+        "thurs": 3,
+        "thursday": 3,
+        "fri": 4,
+        "friday": 4,
+        "sat": 5,
+        "saturday": 5,
+        "sun": 6,
+        "sunday": 6,
+    }
+    result: Set[int] = set()
+    for token in raw.replace(";", ",").split(","):
+        value = token.strip().lower()
+        if not value:
+            continue
+        if value not in day_map:
+            raise ValueError(f"Неизвестное значение дня недели: {token}")
+        result.add(day_map[value])
+    if not result:
+        raise ValueError("Список дней публикации не может быть пустым")
+    return result
 
 
 def _resolve_path(raw: str) -> Path:

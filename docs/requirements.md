@@ -96,22 +96,27 @@ caption ≤ 1024 символов.
 
 Ссылка: https://t.me/<channel>/<message_id> → Post Link
 
-5) СБОРКА ТЕКСТА RSS
+5) РАСПИСАНИЕ ПУБЛИКАЦИЙ
+-------------------------------------------
+RSS: публикации выполняются ежедневно в 08:00 и 20:00 (мск).
+VK/Setka: публикации выполняются в 18:00 (мск) только в дни, перечисленные в переменных окружения `VK_PUBLISH_DAYS`, `SETKA_PUBLISH_DAYS` (формат — `mon,tue,...`).
+
+6) СБОРКА ТЕКСТА RSS
 -------------------------------------------
 Short Post + "\n\nЧитать подробнее >". Перед публикацией сервис удаляет из исходного текста хвостовой фрагмент "Читать подробнее > ..." (если редактор добавил его вручную), чтобы избежать дублирования. В VK используется сокращённая ссылка (`utils.getShortLink` → `vk.cc/...`) с форматом `Читать подробнее > vk.cc/...`. В Telegram — HTML ссылка `<a href="...">Читать подробнее &gt;</a>`. Поле `Short Post` в таблице не изменяется.
 
-6) ОБРАБОТКА VK/SETKA
+7) ОБРАБОТКА VK/SETKA
 -------------------------------------------
 VK (Status = "Revised"): Title + Content → wall.post (owner_id=-group_id) с Image URL → Post Link, Status=Published
 Setka (Status = "Revised"): Title + Content → sendPhoto(Image URL + caption) → Post Link, Status=Published
 
-7) ОШИБКИ, ЛОГИ, РЕТРАИ
+8) ОШИБКИ, ЛОГИ, РЕТРАИ
 -------------------------------------------
 2 повтора (всего 3 попытки), экспоненциальная пауза.
 Логирование в stdout (JSON), писать id строки, вкладку, результат.
 Ошибки в Notes (RSS) и Publish Note (VK/Setka), статус не меняется.
 
-8) ENV
+9) ENV
 -------------------------------------------
 GOOGLE_SHEET_ID=1bjJiP24WnkierEFqZy00Hw9kSR4ESmXgVetrBeTULnU
 GOOGLE_SERVICE_ACCOUNT_JSON=/app/sa.json
@@ -122,9 +127,11 @@ VK_USER_ACCESS_TOKEN=
 VK_GROUP_ID=
 TELEGRAM_BOT_TOKEN=
 TELEGRAM_CHANNEL_USERNAME=aborchi_m
+VK_PUBLISH_DAYS=
+SETKA_PUBLISH_DAYS=
 LOG_LEVEL=INFO
 
-9) DOCKER
+10) DOCKER
 -------------------------------------------
 Dockerfile:
 FROM python:3.11-slim
