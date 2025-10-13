@@ -1,6 +1,8 @@
 """Точка входа для сервиса публикации."""
 
-from datetime import datetime
+from datetime import datetime, date
+import time
+from typing import Dict, Tuple
 
 import pytz
 
@@ -14,12 +16,12 @@ from publisher.vk.client import VKClient
 
 
 def main() -> None:
-    """Запускает обработку всех очередей."""
+    """Запускает сервис и держит его запущенным для работы по расписанию."""
     config = load_config()
     configure_logging(config.log_level)
     logger = get_logger("publisher.entry")
 
-    logger.info("Старт сервиса публикации")
+    logger.info("Сервис запускается и переходит в режим ожидания расписания")
 
     sheets = SheetsClient(config.google)
     telegraph = TelegraphClient(config.telegraph)
@@ -29,46 +31,141 @@ def main() -> None:
     service = PublisherService(sheets, telegraph, vk, telegram)
 
     moscow_tz = pytz.timezone("Europe/Moscow")
-    now_msk = datetime.now(moscow_tz)
 
-    should_run_rss = now_msk.hour in config.rss_hours
-    should_run_vk = now_msk.hour == config.vk_hour and now_msk.weekday() in config.vk_schedule_days
-    should_run_setka = now_msk.hour == config.setka_hour and now_msk.weekday() in config.setka_schedule_days
+    last_runs_rss: Dict[int, date] = {}
+    last_run_vk: Tuple[date, int] | None = None
+    last_run_setka: Tuple[date, int] | None = None
 
-    if should_run_rss:
-        logger.info("Запуск RSS-публикаций", extra={"hour": now_msk.hour})
-        service.process_rss_flow()
-    else:
-        logger.info(
-            "Пропуск RSS по расписанию",
-            extra={"hour": now_msk.hour, "allowed_hours": config.rss_hours},
-        )
+    last_skip_logged = {
+        "rss": None,
+        "vk": None,
+        "setka": None,
+    }
 
-    if should_run_vk:
-        logger.info(
-            "Запуск публикаций VK",
-            extra={"weekday": now_msk.weekday(), "hour": now_msk.hour},
-        )
-        service.process_vk_flow()
-    else:
-        logger.info(
-            "Пропуск VK по расписанию",
-            extra={"weekday": now_msk.weekday(), "hour": now_msk.hour},
-        )
+    try:
+        while True:
+            now_msk = datetime.now(moscow_tz)
+            minute = now_msk.minute
+            current_date = now_msk.date()
+            weekday = now_msk.weekday()
 
-    if should_run_setka:
-        logger.info(
-            "Запуск публикаций Setka",
-            extra={"weekday": now_msk.weekday(), "hour": now_msk.hour},
-        )
-        service.process_setka_flow()
-    else:
-        logger.info(
-            "Пропуск Setka по расписанию",
-            extra={"weekday": now_msk.weekday(), "hour": now_msk.hour},
-        )
+            # RSS – два окна в сутки
+            if minute == 0 and now_msk.hour in config.rss_hours:
+                hour = now_msk.hour
+                if last_runs_rss.get(hour) != current_date:
+                    logger.info(
+                        "Запуск RSS-публикаций",
+                        extra={"hour": hour, "date": str(current_date)},
+                    )
+                    service.process_rss_flow()
+                    last_runs_rss[hour] = current_date
+                else:
+                    _log_skip_once(
+                        logger,
+                        last_skip_logged,
+                        "rss",
+                        now_msk,
+                        reason="RSS уже опубликован в этот час",
+                    )
+            elif minute == 0 and last_skip_logged["rss"] != (current_date, now_msk.hour):
+                _log_skip_once(
+                    logger,
+                    last_skip_logged,
+                    "rss",
+                    now_msk,
+                    reason="вне окна публикации",
+                    extra={"allowed_hours": config.rss_hours},
+                )
 
-    logger.info("Сервис завершил работу")
+            # VK – один пост в разрешённые дни
+            if (
+                minute == 0
+                and now_msk.hour == config.vk_hour
+                and weekday in config.vk_schedule_days
+            ):
+                if last_run_vk != (current_date, config.vk_hour):
+                    logger.info(
+                        "Запуск публикации VK",
+                        extra={"hour": config.vk_hour, "weekday": weekday},
+                    )
+                    service.process_vk_flow()
+                    last_run_vk = (current_date, config.vk_hour)
+                else:
+                    _log_skip_once(
+                        logger,
+                        last_skip_logged,
+                        "vk",
+                        now_msk,
+                        reason="пост VK уже опубликован сегодня",
+                    )
+            elif minute == 0 and last_skip_logged["vk"] != (current_date, now_msk.hour):
+                reason = (
+                    "неразрешённый день" if weekday not in config.vk_schedule_days else "вне окна"
+                )
+                _log_skip_once(
+                    logger,
+                    last_skip_logged,
+                    "vk",
+                    now_msk,
+                    reason=reason,
+                    extra={"allowed_days": sorted(config.vk_schedule_days)},
+                )
+
+            # Setka – один пост в разрешённые дни
+            if (
+                minute == 0
+                and now_msk.hour == config.setka_hour
+                and weekday in config.setka_schedule_days
+            ):
+                if last_run_setka != (current_date, config.setka_hour):
+                    logger.info(
+                        "Запуск публикации Setka",
+                        extra={"hour": config.setka_hour, "weekday": weekday},
+                    )
+                    service.process_setka_flow()
+                    last_run_setka = (current_date, config.setka_hour)
+                else:
+                    _log_skip_once(
+                        logger,
+                        last_skip_logged,
+                        "setka",
+                        now_msk,
+                        reason="пост Setka уже опубликован сегодня",
+                    )
+            elif minute == 0 and last_skip_logged["setka"] != (current_date, now_msk.hour):
+                reason = (
+                    "неразрешённый день"
+                    if weekday not in config.setka_schedule_days
+                    else "вне окна"
+                )
+                _log_skip_once(
+                    logger,
+                    last_skip_logged,
+                    "setka",
+                    now_msk,
+                    reason=reason,
+                    extra={"allowed_days": sorted(config.setka_schedule_days)},
+                )
+
+            # Сон до начала следующей минуты
+            sleep_seconds = 60 - now_msk.second
+            if sleep_seconds <= 0:
+                sleep_seconds = 60
+            time.sleep(sleep_seconds)
+    except KeyboardInterrupt:
+        logger.info("Сервис остановлен пользователем")
+
+
+def _log_skip_once(logger, cache, key, timestamp, reason, extra=None):
+    """Логирует события пропуска не чаще одного раза в час."""
+    signature = (timestamp.date(), timestamp.hour)
+    if cache[key] == signature:
+        return
+    payload = {"reason": reason, "hour": timestamp.hour, "weekday": timestamp.weekday()}
+    if extra:
+        payload.update(extra)
+    logger.info("Пропуск публикации", extra={"flow": key, **payload})
+    cache[key] = signature
 
 
 if __name__ == "__main__":

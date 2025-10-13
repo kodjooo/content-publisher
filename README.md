@@ -13,7 +13,7 @@
 > Обрабатываются только строки со статусом `Revised`; успешные публикации переводятся в `Published`, ошибки записываются в `Notes` (RSS) и `Publish Note` (VK/Setka). Заголовок для Telegraph берётся из столбца `GPT Post Title`; короткие тексты очищаются от заранее вставленного “Читать подробнее >”, после чего ссылки формируются: в VK — через `utils.getShortLink` (`Читать подробнее > vk.cc/...`), в Telegram — HTML-гиперссылкой. Расписание: RSS — в 08:00 и 20:00 (мск) ежедневно, VK и Setka — в 18:00 (мск) в дни, указанные в `VK_PUBLISH_DAYS`/`SETKA_PUBLISH_DAYS`; за один запуск публикуется не более одного поста на каждую вкладку VK/Setka.
 
 ## Подготовка окружения
-1. Скопируйте `.env.example` в `.env` и заполните токены (`VK_USER_ACCESS_TOKEN`, `VK_GROUP_ID`, `TELEGRAM_BOT_TOKEN`, `TELEGRAPH_ACCESS_TOKEN` и т.д.).
+1. Скопируйте `.env.example` в `.env` и заполните токены (`VK_USER_ACCESS_TOKEN`, `VK_GROUP_ID`, `TELEGRAM_BOT_TOKEN`, `TELEGRAPH_ACCESS_TOKEN` и т.д.), а также задайте дни публикаций в `VK_PUBLISH_DAYS` и `SETKA_PUBLISH_DAYS`.
 2. Разместите сервисный аккаунт Google по пути, указанному в переменной `GOOGLE_SERVICE_ACCOUNT_JSON`.
 3. Соберите образ и установите зависимости внутри контейнера:
    ```bash
@@ -22,31 +22,24 @@
 
 ## Запуск
 ```bash
-docker compose run --rm publisher
+# Запуск в фоне
+docker compose up -d publisher
+
+# Или запуск в фореграунде (Ctrl+C для остановки)
+docker compose up publisher
 ```
 
 ## Развёртывание на удалённом сервере
 - Установите Docker и Docker Compose (`curl -fsSL https://get.docker.com | sh`, затем `sudo usermod -aG docker <user>`).
-- Склонируйте репозиторий: `git clone git@github.com:kodjooo/content-publisher.git && cd content-publisher`.
+- Склонируйте репозиторий: `git clone https://github.com/kodjooo/content-publisher.git && cd content-publisher`.
 - Заполните `.env` (секреты передавайте безопасным каналом, файл в git не коммитится).
 - При необходимости скопируйте файл сервисного аккаунта Google в `/app/sa.json` внутри проекта или настройте том.
 - Соберите образ: `docker compose build`.
-- Запустите однократное выполнение: `docker compose run --rm publisher`.
-- Для просмотра логов во время выполнения используйте `docker compose logs -f`.
+- Запустите сервис в фоне: `docker compose up -d publisher` (для фореграунда — `docker compose up publisher`).
+- Для просмотра логов во время работы используйте `docker compose logs -f`.
 
 ### Автозапуск по расписанию
-Сам сервис рассчитывает, что его запускает внешнее расписание (например, cron). Запускайте контейнер `docker compose run --rm publisher` в нужные моменты, а внутренняя логика уже проверит, попадает ли текущее время в окна публикации (RSS: 08:00/20:00 мск, VK/Setka: 18:00 мск по указанным дням).
-
-Пример кронтаба для сервера в часовом поясе МСК:
-
-```
-# RSS в 08:00 и 20:00
-0 8,20 * * * cd /path/to/content-publisher && docker compose run --rm publisher >> /var/log/content-publisher.log 2>&1
-# VK/Setka в 18:00
-0 18 * * * cd /path/to/content-publisher && docker compose run --rm publisher >> /var/log/content-publisher.log 2>&1
-```
-
-Если сервер работает в другом часовом поясе — настройте cron с учётом смещения или используйте `TZ='Europe/Moscow'` в записи.
+После запуска контейнер остаётся активным и каждые 60 секунд сверяет текущее московское время с расписанием: RSS публикуется в 08:00 и 20:00 ежедневно, VK и Setka — в 18:00 только в дни, перечисленные в `VK_PUBLISH_DAYS` и `SETKA_PUBLISH_DAYS`. Дополнительный cron не требуется.
 
 ## Тесты
 ```bash
