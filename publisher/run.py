@@ -172,5 +172,26 @@ def _log_skip_once(logger, cache, key, timestamp, reason, extra=None):
     cache[key] = signature
 
 
+def _process_all(service: PublisherService, logger) -> None:
+    """Выполняет полный цикл публикаций вне расписания."""
+    try:
+        logger.info("Тестовый запуск: RSS")
+        service.process_rss_flow()
+    except Exception as exc:  # noqa: BLE001
+        logger.error("Тестовый запуск RSS завершился ошибкой", extra={"error": str(exc)})
+
+    try:
+        logger.info("Тестовый запуск: VK")
+        service.process_vk_flow()
+    except Exception as exc:  # noqa: BLE001
+        logger.error("Тестовый запуск VK завершился ошибкой", extra={"error": str(exc)})
+
+    try:
+        logger.info("Тестовый запуск: Setka")
+        service.process_setka_flow()
+    except Exception as exc:  # noqa: BLE001
+        logger.error("Тестовый запуск Setka завершился ошибкой", extra={"error": str(exc)})
+
+
 if __name__ == "__main__":
     main()
