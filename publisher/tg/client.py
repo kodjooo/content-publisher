@@ -25,25 +25,41 @@ class TelegramClient:
         self._channel = config.channel_username if config.channel_username.startswith("@") else f"@{config.channel_username}"
         self._session = requests.Session()
 
-    def send_post(self, text: str, image_url: str, telegraph_link: Optional[str] = None, add_spacing: bool = False) -> str:
-        """Отправляет пост и возвращает ссылку."""
+    def send_post(
+        self,
+        text: str,
+        image_url: Optional[str],
+        telegraph_link: Optional[str] = None,
+        add_spacing: bool = False,
+    ) -> str:
+        """Отправляет пост (с фото или без) и возвращает ссылку."""
         safe_text = html.escape(text.strip())
-        caption = safe_text
+        body = safe_text
         if telegraph_link:
             link = html.escape(telegraph_link, quote=True)
             spacer = "\n\n" if add_spacing and safe_text else ""
             if safe_text:
-                caption = f"{safe_text}{spacer}<a href=\"{link}\">Читать подробнее &gt;</a>"
+                body = f"{safe_text}{spacer}<a href=\"{link}\">Читать подробнее &gt;</a>"
             else:
-                caption = f"<a href=\"{link}\">Читать подробнее &gt;</a>"
-        caption = self._truncate_caption(caption)
-        payload = {
-            "chat_id": self._channel,
-            "photo": image_url,
-            "caption": caption,
-            "parse_mode": "HTML",
-        }
-        response = self._post("/sendPhoto", data=payload)
+                body = f"<a href=\"{link}\">Читать подробнее &gt;</a>"
+
+        if image_url:
+            caption = self._truncate_caption(body)
+            payload = {
+                "chat_id": self._channel,
+                "photo": image_url,
+                "caption": caption,
+                "parse_mode": "HTML",
+            }
+            response = self._post("/sendPhoto", data=payload)
+        else:
+            payload = {
+                "chat_id": self._channel,
+                "text": self._truncate_message(body),
+                "parse_mode": "HTML",
+            }
+            response = self._post("/sendMessage", data=payload)
+
         data = response.json()
         if not data.get("ok"):
             raise TelegramError(f"Ошибка отправки сообщения: {data}")
@@ -65,3 +81,8 @@ class TelegramClient:
         response = self._session.post(url, timeout=10, **kwargs)
         response.raise_for_status()
         return response
+
+    def _truncate_message(self, text: str) -> str:
+        if len(text) <= 4096:
+            return text
+        return text[: 4096 - 1] + "…"

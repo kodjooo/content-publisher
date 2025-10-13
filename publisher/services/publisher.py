@@ -92,7 +92,8 @@ class PublisherService:
         self._logger.info("Начало обработки Setka", extra={"row": row.row_number})
         try:
             message = self._compose_vk_message(row.title, row.content)
-            link = self._telegram.send_post(message, row.image_url)
+            image_url = row.image_url.strip()
+            link = self._telegram.send_post(message, image_url or None, add_spacing=True)
             self._sheets.mark_setka_published(row, link)
             self._logger.info("Setka опубликован", extra={"row": row.row_number, "telegram_link": link})
         except Exception as exc:  # noqa: BLE001
