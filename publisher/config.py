@@ -40,6 +40,7 @@ class AppConfig:
     vk: VKConfig
     telegram: TelegramConfig
     log_level: str
+    rss_use_average_post: bool
     vk_schedule_days: Set[int]
     setka_schedule_days: Set[int]
     rss_hours: Tuple[int, int]
@@ -92,6 +93,7 @@ def load_config() -> AppConfig:
         vk=vk,
         telegram=telegram,
         log_level=log_level,
+        rss_use_average_post=_parse_bool(os.getenv("RSS_USE_AVERAGE_POST", "false")),
         vk_schedule_days=vk_days,
         setka_schedule_days=setka_days,
         rss_hours=(8, 20),

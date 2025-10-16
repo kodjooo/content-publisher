@@ -28,7 +28,13 @@ def main() -> None:
     vk = VKClient(config.vk)
     telegram = TelegramClient(config.telegram)
 
-    service = PublisherService(sheets, telegraph, vk, telegram)
+    service = PublisherService(
+        sheets,
+        telegraph,
+        vk,
+        telegram,
+        use_average_post=config.rss_use_average_post,
+    )
 
     moscow_tz = pytz.timezone("Europe/Moscow")
 

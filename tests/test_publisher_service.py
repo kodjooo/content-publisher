@@ -25,6 +25,8 @@ def test_process_rss_flow_success(clients):
         gpt_post_title="Заголовок статьи",
         gpt_post="Заголовок статьи\n\nОсновной текст",
         short_post="Короткая версия\n\nЧитать подробнее > https://example.com",
+        average_post="",
+        link="https://source.example",
         image_url="https://example.com/image.jpg",
         telegraph_link="",
         vk_post_link="",
@@ -46,7 +48,13 @@ def test_process_rss_flow_success(clients):
     assert vk_message.startswith("#Обзор_Новостей")
     assert "Заголовок статьи" in vk_message.splitlines()[1]
     assert "Читать подробнее > vk.cc/short" in vk_message
-    telegram.send_post.assert_called_once_with("#Обзор_Новостей\nЗаголовок статьи\n\nКороткая версия", row.image_url, "https://telegra.ph/page", add_spacing=True)
+    telegram.send_post.assert_called_once_with(
+        "#Обзор_Новостей\nЗаголовок статьи\n\nКороткая версия",
+        row.image_url,
+        "https://telegra.ph/page",
+        add_spacing=True,
+        link_label="Читать подробнее >",
+    )
     sheets.update_rss_row.assert_called_once_with(row, "https://telegra.ph/page", "https://vk.com/wall-1_1", "https://t.me/channel/1")
     sheets.write_rss_error.assert_not_called()
 
@@ -58,6 +66,8 @@ def test_process_rss_flow_uses_existing_telegraph_link(clients):
         gpt_post_title="",
         gpt_post="Существующий пост",
         short_post="Коротко\n\nЧитать подробнее > https://example.com",
+        average_post="",
+        link="",
         image_url="https://example.com/image.jpg",
         telegraph_link="https://telegra.ph/existing",
         vk_post_link="",
@@ -74,10 +84,53 @@ def test_process_rss_flow_uses_existing_telegraph_link(clients):
     telegraph.create_page.assert_not_called()
     sheets.update_rss_row.assert_called_once_with(row, "https://telegra.ph/existing", "https://vk.com/wall-1_2", "https://t.me/channel/2")
     vk.get_short_link.assert_called_once_with("https://telegra.ph/existing")
-    telegram.send_post.assert_called_once_with("#Обзор_Новостей\n\nКоротко", row.image_url, "https://telegra.ph/existing", add_spacing=True)
+    telegram.send_post.assert_called_once_with(
+        "#Обзор_Новостей\n\nКоротко",
+        row.image_url,
+        "https://telegra.ph/existing",
+        add_spacing=True,
+        link_label="Читать подробнее >",
+    )
     vk_message = vk.publish_post.call_args[0][0]
     assert vk_message.startswith("#Обзор_Новостей")
     assert "Читать подробнее > vk.cc/existing" in vk_message
+
+
+def test_process_rss_flow_average_post_mode(clients):
+    sheets, telegraph, vk, telegram, _ = clients
+    service = PublisherService(sheets, telegraph, vk, telegram, use_average_post=True)
+    row = RSSRow(
+        row_number=7,
+        gpt_post_title="Средний заголовок",
+        gpt_post="Полная версия текста",
+        short_post="",
+        average_post="Основной средний текст\n\nИсточник >",
+        link="https://example.com/source",
+        image_url="https://example.com/image.jpg",
+        telegraph_link="",
+        vk_post_link="",
+        telegram_post_link="",
+        status="Revised",
+    )
+    sheets.fetch_rss_ready_rows.return_value = [row]
+    telegraph.create_page.return_value = "https://telegra.ph/page"
+    vk.get_short_link.return_value = "vk.cc/source"
+    vk.publish_post.return_value = "https://vk.com/wall-1_77"
+    telegram.send_post.return_value = "https://t.me/channel/77"
+
+    service.process_rss_flow()
+
+    vk.get_short_link.assert_called_once_with("https://example.com/source")
+    vk_message = vk.publish_post.call_args[0][0]
+    assert "Источник > vk.cc/source" in vk_message
+    telegram.send_post.assert_called_once_with(
+        "#Обзор_Новостей\nСредний заголовок\n\nОсновной средний текст",
+        row.image_url,
+        "https://example.com/source",
+        add_spacing=True,
+        link_label="Источник >",
+    )
+    sheets.update_rss_row.assert_called_once()
 
 
 def test_process_rss_flow_handles_errors(clients):
@@ -87,6 +140,8 @@ def test_process_rss_flow_handles_errors(clients):
         gpt_post_title="",
         gpt_post="Текст",
         short_post="Коротко",
+        average_post="",
+        link="",
         image_url="https://example.com/image.jpg",
         telegraph_link="",
         vk_post_link="",

@@ -17,6 +17,8 @@ class RSSRow:
     gpt_post_title: str
     gpt_post: str
     short_post: str
+    average_post: str
+    link: str
     image_url: str
     telegraph_link: str
     vk_post_link: str
@@ -65,6 +67,8 @@ class SheetsClient:
                     gpt_post_title=data.get("GPT Post Title", ""),
                     gpt_post=data.get("GPT Post", ""),
                     short_post=data.get("Short Post", ""),
+                    average_post=data.get("Average Post", ""),
+                    link=data.get("Link", ""),
                     image_url=data.get("Image URL", ""),
                     telegraph_link=data.get("Telegraph Link", ""),
                     vk_post_link=data.get("VK Post Link", ""),

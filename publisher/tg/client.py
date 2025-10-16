@@ -29,19 +29,21 @@ class TelegramClient:
         self,
         text: str,
         image_url: Optional[str],
-        telegraph_link: Optional[str] = None,
+        link_url: Optional[str] = None,
         add_spacing: bool = False,
+        link_label: str = "Читать подробнее >",
     ) -> str:
         """Отправляет пост (с фото или без) и возвращает ссылку."""
         safe_text = html.escape(text.strip())
         body = safe_text
-        if telegraph_link:
-            link = html.escape(telegraph_link, quote=True)
+        if link_url:
+            link = html.escape(link_url, quote=True)
+            label = html.escape(link_label)
             spacer = "\n\n" if add_spacing and safe_text else ""
             if safe_text:
-                body = f"{safe_text}{spacer}<a href=\"{link}\">Читать подробнее &gt;</a>"
+                body = f"{safe_text}{spacer}<a href=\"{link}\">{label}</a>"
             else:
-                body = f"<a href=\"{link}\">Читать подробнее &gt;</a>"
+                body = f"<a href=\"{link}\">{label}</a>"
 
         if image_url:
             caption = self._truncate_caption(body)

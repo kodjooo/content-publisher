@@ -18,12 +18,14 @@ class PublisherService:
         telegraph: TelegraphClient,
         vk: VKClient,
         telegram: TelegramClient,
+        use_average_post: bool = False,
     ) -> None:
         self._sheets = sheets
         self._telegraph = telegraph
         self._vk = vk
         self._telegram = telegram
         self._logger = get_logger("publisher")
+        self._use_average_post = use_average_post
 
     def run_all(self) -> None:
         """Запускает все сценарии."""
@@ -44,11 +46,24 @@ class PublisherService:
                 if not telegraph_link:
                     title = self._derive_title(row.gpt_post_title, row.gpt_post)
                     telegraph_link = self._telegraph.create_page(title=title, gpt_post=row.gpt_post, image_url=row.image_url or None)
-                sanitized_short = self._prepare_short_post(row.short_post, row.gpt_post_title)
-                short_link = self._vk.get_short_link(telegraph_link) if telegraph_link else telegraph_link
-                vk_message = self._compose_vk_short_post(sanitized_short, short_link)
+                if self._use_average_post and row.average_post.strip():
+                    sanitized_text = self._prepare_average_post(row.average_post, row.gpt_post_title)
+                    link_label = "Источник >"
+                    raw_link = row.link.strip()
+                else:
+                    sanitized_text = self._prepare_short_post(row.short_post, row.gpt_post_title)
+                    link_label = "Читать подробнее >"
+                    raw_link = telegraph_link or ""
+                vk_link_target = self._vk.get_short_link(raw_link) if raw_link else ""
+                vk_message = self._compose_vk_post_with_link(sanitized_text, vk_link_target, link_label)
                 vk_link = self._vk.publish_post(vk_message, row.image_url)
-                telegram_link = self._telegram.send_post(sanitized_short, row.image_url, telegraph_link, add_spacing=True)
+                telegram_link = self._telegram.send_post(
+                    sanitized_text,
+                    row.image_url,
+                    raw_link or None,
+                    add_spacing=True,
+                    link_label=link_label,
+                )
                 self._sheets.update_rss_row(row, telegraph_link, vk_link, telegram_link)
                 self._logger.info(
                     "RSS опубликован",
@@ -113,14 +128,6 @@ class PublisherService:
             return "Без названия"
         return text[:100]
 
-    def _compose_vk_short_post(self, short_post: str, telegraph_link: str) -> str:
-        """Возвращает короткий пост с ссылкой для VK."""
-        short = short_post.strip()
-        parts = [short] if short else []
-        if telegraph_link:
-            parts.append(f"Читать подробнее > {telegraph_link}")
-        return "\n\n".join(part for part in parts if part)
-
     def _prepare_short_post(self, short_post: str, title: str) -> str:
         """Удаляет старую подпись и добавляет хэштег с заголовком."""
         lines = [line.rstrip() for line in short_post.strip().splitlines()]
@@ -136,15 +143,43 @@ class PublisherService:
                 while lines and not lines[-1]:
                     lines.pop()
             body = "\n".join(lines)
-        header_lines = ["#Обзор_Новостей"]
-        normalized_title = title.strip()
-        if normalized_title:
-            header_lines.append(normalized_title)
-        content_lines = [part for part in [body] if part]
-        return "\n".join(header_lines + ([""] if content_lines else []) + content_lines)
+        return self._merge_with_header(body, title)
 
     def _compose_vk_message(self, title: str, content: str) -> str:
         """Собирает текст для VK или Telegram."""
         parts = [title.strip(), content.strip()]
         filtered = [part for part in parts if part]
         return "\n\n".join(filtered)
+
+    def _prepare_average_post(self, average_post: str, title: str) -> str:
+        """Готовит текст среднего поста и убирает хвост источника."""
+        lines = [line.rstrip() for line in average_post.strip().splitlines()]
+        while lines and not lines[-1]:
+            lines.pop()
+        if lines:
+            last = lines[-1].strip()
+            normalized = last.lower()
+            if normalized.startswith("источник >"):
+                lines.pop()
+                while lines and not lines[-1]:
+                    lines.pop()
+        body = "\n".join(lines)
+        return self._merge_with_header(body, title)
+
+    def _merge_with_header(self, body: str, title: str) -> str:
+        """Добавляет стандартный заголовок для публикаций."""
+        header_lines = ["#Обзор_Новостей"]
+        normalized_title = title.strip()
+        if normalized_title:
+            header_lines.append(normalized_title)
+        content_lines = [body] if body else []
+        if content_lines:
+            return "\n".join(header_lines + [""] + content_lines)
+        return "\n".join(header_lines)
+
+    def _compose_vk_post_with_link(self, base_text: str, link: Optional[str], label: str) -> str:
+        """Собирает сообщение VK с дополнительной ссылкой."""
+        parts = [base_text.strip()]
+        if link:
+            parts.append(f"{label} {link}")
+        return "\n\n".join(part for part in parts if part)
