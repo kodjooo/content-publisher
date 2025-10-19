@@ -1,5 +1,6 @@
 """Бизнес-логика публикации контента."""
 
+import html
 from typing import Optional
 
 from publisher.core.logger import get_logger
@@ -107,11 +108,15 @@ class PublisherService:
         self._logger.info("Начало обработки Setka", extra={"row": row.row_number})
         try:
             image_url = row.image_url.strip()
-            if image_url:
-                message = self._compose_vk_message(row.title, row.content)
+            message = self._compose_vk_message(row.title, row.content).strip()
+            if not message:
+                message = row.content.strip()
+            escaped = html.escape(message)
+            can_use_photo = bool(image_url) and len(escaped) <= TelegramClient.CAPTION_LIMIT
+            if can_use_photo:
                 link = self._telegram.send_post(message, image_url, add_spacing=True)
             else:
-                link = self._telegram.send_post(row.content.strip(), None, add_spacing=False)
+                link = self._telegram.send_post(message, None, add_spacing=False)
             self._sheets.mark_setka_published(row, link)
             self._logger.info("Setka опубликован", extra={"row": row.row_number, "telegram_link": link})
         except Exception as exc:  # noqa: BLE001

@@ -6,6 +6,7 @@ import pytest
 
 from publisher.gs.sheets import RSSRow, SetkaRow, VKRow
 from publisher.services.publisher import PublisherService
+from publisher.tg.client import TelegramClient
 
 
 @pytest.fixture()
@@ -192,5 +193,33 @@ def test_process_setka_flow_success(clients):
 
     service.process_setka_flow()
 
-    telegram.send_post.assert_called_once()
+    telegram.send_post.assert_called_once_with(
+        "Заголовок\n\nСодержимое",
+        row.image_url,
+        add_spacing=True,
+    )
     sheets.mark_setka_published.assert_called_once_with(row, "https://t.me/channel/3")
+
+
+def test_process_setka_flow_long_message_without_photo(clients):
+    sheets, _, _, telegram, service = clients
+    long_content = "A" * (TelegramClient.CAPTION_LIMIT + 10)
+    row = SetkaRow(
+        row_number=8,
+        title="Заголовок",
+        content=long_content,
+        image_url="https://example.com/image.jpg",
+        post_link="",
+        status="Revised",
+    )
+    sheets.fetch_setka_rows.return_value = [row]
+    telegram.send_post.return_value = "https://t.me/channel/8"
+
+    service.process_setka_flow()
+
+    telegram.send_post.assert_called_once_with(
+        "Заголовок\n\n" + long_content,
+        None,
+        add_spacing=False,
+    )
+    sheets.mark_setka_published.assert_called_once_with(row, "https://t.me/channel/8")
