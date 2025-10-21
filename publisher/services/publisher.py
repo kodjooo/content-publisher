@@ -108,9 +108,7 @@ class PublisherService:
         self._logger.info("Начало обработки Setka", extra={"row": row.row_number})
         try:
             image_url = row.image_url.strip()
-            message = self._compose_vk_message(row.title, row.content).strip()
-            if not message:
-                message = row.content.strip()
+            message = row.content.strip() or row.title.strip()
             escaped = html.escape(message)
             can_use_photo = bool(image_url) and len(escaped) <= TelegramClient.CAPTION_LIMIT
             if can_use_photo:

@@ -193,11 +193,7 @@ def test_process_setka_flow_success(clients):
 
     service.process_setka_flow()
 
-    telegram.send_post.assert_called_once_with(
-        "Заголовок\n\nСодержимое",
-        row.image_url,
-        add_spacing=True,
-    )
+    telegram.send_post.assert_called_once_with("Содержимое", row.image_url, add_spacing=True)
     sheets.mark_setka_published.assert_called_once_with(row, "https://t.me/channel/3")
 
 
@@ -217,9 +213,5 @@ def test_process_setka_flow_long_message_without_photo(clients):
 
     service.process_setka_flow()
 
-    telegram.send_post.assert_called_once_with(
-        "Заголовок\n\n" + long_content,
-        None,
-        add_spacing=False,
-    )
+    telegram.send_post.assert_called_once_with(long_content, None, add_spacing=False)
     sheets.mark_setka_published.assert_called_once_with(row, "https://t.me/channel/8")
