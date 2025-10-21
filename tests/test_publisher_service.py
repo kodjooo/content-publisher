@@ -178,6 +178,48 @@ def test_process_vk_flow_success(clients):
     sheets.mark_vk_published.assert_called_once_with(row, "https://vk.com/wall-1_3")
 
 
+def test_process_rss_flow_processes_only_first_row(clients):
+    sheets, telegraph, vk, telegram, service = clients
+    row1 = RSSRow(
+        row_number=10,
+        gpt_post_title="",
+        gpt_post="Пост 1",
+        short_post="Пост 1 коротко",
+        average_post="",
+        link="",
+        image_url="https://example.com/img1.jpg",
+        telegraph_link="",
+        vk_post_link="",
+        telegram_post_link="",
+        status="Revised",
+    )
+    row2 = RSSRow(
+        row_number=11,
+        gpt_post_title="",
+        gpt_post="Пост 2",
+        short_post="Пост 2 коротко",
+        average_post="",
+        link="",
+        image_url="https://example.com/img2.jpg",
+        telegraph_link="",
+        vk_post_link="",
+        telegram_post_link="",
+        status="Revised",
+    )
+    sheets.fetch_rss_ready_rows.return_value = [row1, row2]
+    telegraph.create_page.return_value = "https://telegra.ph/post1"
+    vk.get_short_link.return_value = "vk.cc/one"
+    vk.publish_post.return_value = "https://vk.com/wall-1_10"
+    telegram.send_post.return_value = "https://t.me/channel/10"
+
+    service.process_rss_flow()
+
+    sheets.update_rss_row.assert_called_once_with(row1, "https://telegra.ph/post1", "https://vk.com/wall-1_10", "https://t.me/channel/10")
+    vk.publish_post.assert_called_once()
+    telegraph.create_page.assert_called_once()
+    telegram.send_post.assert_called_once()
+
+
 def test_process_setka_flow_success(clients):
     sheets, _, _, telegram, service = clients
     row = SetkaRow(

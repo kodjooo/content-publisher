@@ -40,45 +40,45 @@ class PublisherService:
         if not rows:
             self._logger.info("Нет строк RSS для публикации")
             return
-        for row in rows:
-            self._logger.info("Начало обработки RSS", extra={"row": row.row_number})
-            try:
-                telegraph_link = row.telegraph_link
-                if not telegraph_link:
-                    title = self._derive_title(row.gpt_post_title, row.gpt_post)
-                    telegraph_link = self._telegraph.create_page(title=title, gpt_post=row.gpt_post, image_url=row.image_url or None)
-                if self._use_average_post and row.average_post.strip():
-                    sanitized_text = self._prepare_average_post(row.average_post, row.gpt_post_title)
-                    link_label = "Источник >"
-                    raw_link = row.link.strip()
-                else:
-                    sanitized_text = self._prepare_short_post(row.short_post, row.gpt_post_title)
-                    link_label = "Читать подробнее >"
-                    raw_link = telegraph_link or ""
-                vk_link_target = self._vk.get_short_link(raw_link) if raw_link else ""
-                vk_message = self._compose_vk_post_with_link(sanitized_text, vk_link_target, link_label)
-                vk_link = self._vk.publish_post(vk_message, row.image_url)
-                telegram_link = self._telegram.send_post(
-                    sanitized_text,
-                    row.image_url,
-                    raw_link or None,
-                    add_spacing=True,
-                    link_label=link_label,
-                )
-                self._sheets.update_rss_row(row, telegraph_link, vk_link, telegram_link)
-                self._logger.info(
-                    "RSS опубликован",
-                    extra={
-                        "row": row.row_number,
-                        "telegraph_link": telegraph_link,
-                        "vk_link": vk_link,
-                        "telegram_link": telegram_link,
-                    },
-                )
-            except Exception as exc:  # noqa: BLE001
-                message = str(exc)
-                self._logger.error("Ошибка RSS", extra={"row": row.row_number, "error": message})
-                self._sheets.write_rss_error(row, message)
+        row = rows[0]
+        self._logger.info("Начало обработки RSS", extra={"row": row.row_number})
+        try:
+            telegraph_link = row.telegraph_link
+            if not telegraph_link:
+                title = self._derive_title(row.gpt_post_title, row.gpt_post)
+                telegraph_link = self._telegraph.create_page(title=title, gpt_post=row.gpt_post, image_url=row.image_url or None)
+            if self._use_average_post and row.average_post.strip():
+                sanitized_text = self._prepare_average_post(row.average_post, row.gpt_post_title)
+                link_label = "Источник >"
+                raw_link = row.link.strip()
+            else:
+                sanitized_text = self._prepare_short_post(row.short_post, row.gpt_post_title)
+                link_label = "Читать подробнее >"
+                raw_link = telegraph_link or ""
+            vk_link_target = self._vk.get_short_link(raw_link) if raw_link else ""
+            vk_message = self._compose_vk_post_with_link(sanitized_text, vk_link_target, link_label)
+            vk_link = self._vk.publish_post(vk_message, row.image_url)
+            telegram_link = self._telegram.send_post(
+                sanitized_text,
+                row.image_url,
+                raw_link or None,
+                add_spacing=True,
+                link_label=link_label,
+            )
+            self._sheets.update_rss_row(row, telegraph_link, vk_link, telegram_link)
+            self._logger.info(
+                "RSS опубликован",
+                extra={
+                    "row": row.row_number,
+                    "telegraph_link": telegraph_link,
+                    "vk_link": vk_link,
+                    "telegram_link": telegram_link,
+                },
+            )
+        except Exception as exc:  # noqa: BLE001
+            message = str(exc)
+            self._logger.error("Ошибка RSS", extra={"row": row.row_number, "error": message})
+            self._sheets.write_rss_error(row, message)
 
     def process_vk_flow(self) -> None:
         """Обрабатывает точечные посты VK."""
