@@ -52,15 +52,6 @@ class NetworkConfig(BaseModel):
         return value
 
 
-class SheetConfig(BaseModel):
-    """Настройки Google Sheets."""
-
-    spreadsheet_id: str
-    write_batch_size: PositiveInt = Field(default=200, le=500)
-    sheet_state_tab: str = Field(default="_state")
-    sheet_runs_tab: str = Field(default="_runs")
-
-
 class GlobalStopConfig(BaseModel):
     stop_after_products: int | None = None
     stop_after_minutes: int | None = None
@@ -80,10 +71,6 @@ class DelayConfig(BaseModel):
 
 def _default_page_delay() -> DelayConfig:
     return DelayConfig(min_sec=5.0, max_sec=8.0)
-
-
-def _default_product_delay() -> DelayConfig:
-    return DelayConfig(min_sec=8.0, max_sec=12.0)
 
 
 def _default_behavior_action_delay() -> DelayConfig:
@@ -149,9 +136,7 @@ class RuntimeConfig(BaseModel):
     max_concurrency_per_site: PositiveInt = Field(default=1, le=10)
     global_stop: GlobalStopConfig = Field(default_factory=GlobalStopConfig)
     page_delay: DelayConfig = Field(default_factory=_default_page_delay)
-    product_delay: DelayConfig = Field(default_factory=_default_product_delay)
     behavior: HumanBehaviorConfig = Field(default_factory=HumanBehaviorConfig)
-    product_fetch_engine: Literal["http", "browser"] = Field(default="http")
     fail_cooldown_threshold: int = Field(default=5, ge=0)
     fail_cooldown_seconds: int = Field(default=0, ge=0)
 
@@ -162,12 +147,16 @@ class DedupeConfig(BaseModel):
     strip_params_blacklist: list[str] = Field(default_factory=list)
 
 
-class StateConfig(BaseModel):
-    """Настройки хранения локального состояния."""
-
-    driver: Literal["sqlite", "jsonl"] = Field(default="sqlite")
-    database: Path = Field(default=Path("/var/app/state/runtime.db"))
-    snapshots_dir: Path | None = None
+class ExcelConfig(BaseModel):
+    workbook_path: Path
+    sheet_name: str | None = None
+    header_row: int = Field(default=1, ge=1)
+    url_column_candidates: list[str] = Field(
+        default_factory=lambda: ["product_url", "url", "link", "ссылка"]
+    )
+    price_column_name: str = "current_price"
+    rating_column_name: str = "rating"
+    in_stock_column_name: str = "in_stock"
 
 
 class WaitCondition(BaseModel):
@@ -208,32 +197,19 @@ SelectorValue = str | list[str] | None
 
 
 class SelectorConfig(BaseModel):
+    product_card_selector: str
     product_link_selector: str
     base_url: HttpUrl | None = None
     allowed_domains: list[str] = Field(default_factory=list)
-    main_image_selector: str | None = None
-    content_drop_after: list[str] = Field(
-        default_factory=list,
-        description=(
-            "Селекторы элементов, после которых (включая их) текст товара нужно обрезать"
-        ),
-    )
-    content_exclude_selectors: list[str] = Field(
-        default_factory=list,
-        description="Селекторы блоков, которые нужно удалить из текста, не обрезая всё остальное",
-    )
-    name_en_selector: str | None = None
-    name_ru_selector: str | None = None
-    price_without_discount_selector: str | None = None
+    price_without_discount_selector: SelectorValue = None
     price_with_discount_selector: SelectorValue = None
+    rating_selector: SelectorValue = None
+    in_stock_selector: str | None = None
+    out_of_stock_selector: str | None = None
     category_labels: dict[str, str] = Field(default_factory=dict)
     hover_targets: list[str] = Field(
         default_factory=list,
         description="Селекторы элементов, на которые нужно имитировать наведение курсора (per-site)",
-    )
-    product_hover_targets: list[str] | None = Field(
-        default=None,
-        description="Селекторы для hover на карточках товаров (если нужно отличать от категорий)",
     )
 
 
@@ -285,7 +261,7 @@ class SiteConfig(BaseModel):
 
     @property
     def engine(self) -> str:
-        return self.site.get("engine", "http")
+        return self.site.get("engine", "browser")
 
     @property
     def base_url(self) -> str | None:
@@ -295,8 +271,14 @@ class SiteConfig(BaseModel):
 
 
 class GlobalConfig(BaseModel):
-    sheet: SheetConfig
     runtime: RuntimeConfig
     network: NetworkConfig
     dedupe: DedupeConfig = Field(default_factory=DedupeConfig)
-    state: StateConfig = Field(default_factory=StateConfig)
+    excel: ExcelConfig
+
+
+class SiteConfigList(RootModel[list[SiteConfig]]):
+    pass
+
+
+GlobalConfigType = Annotated[GlobalConfig, Field(discriminator=None)]

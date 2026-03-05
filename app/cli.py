@@ -9,7 +9,7 @@ from app.logger import configure_logging, get_logger
 from app.workflow.runner import AgentRunner, RunnerOptions
 
 console = Console()
-cli = typer.Typer(help="Гибкий агент сбора ссылок товаров из категорий сайтов.")
+cli = typer.Typer(help="Агент мониторинга категорий и обновления Excel по ссылкам товаров.")
 logger = get_logger(__name__)
 
 
@@ -30,16 +30,12 @@ def _build_runner_options(
     config_path: Optional[Path],
     sites_dir: Path,
     run_id: Optional[str],
-    resume: bool,
-    reset_state: bool,
     dry_run: bool,
 ) -> RunnerOptions:
     return RunnerOptions(
         config_path=config_path,
         sites_dir=sites_dir,
         run_id=run_id,
-        resume=resume,
-        reset_state=reset_state,
         dry_run=dry_run,
     )
 
@@ -72,23 +68,12 @@ def _common_run_options() -> dict:
             "INFO",
             "--log-level",
             envvar="LOG_LEVEL",
-            help="Уровень логирования (DEBUG/INFO/WARNING/ERROR/CRITICAL). "
-            "Можно задать через переменную окружения LOG_LEVEL.",
-        ),
-        resume=typer.Option(
-            True,
-            "--resume/--no-resume",
-            help="Продолжать с учётом сохранённого state.",
-        ),
-        reset_state=typer.Option(
-            False,
-            "--reset-state",
-            help="Перед запуском стереть локальное состояние.",
+            help="Уровень логирования (DEBUG/INFO/WARNING/ERROR/CRITICAL).",
         ),
         dry_run=typer.Option(
             False,
             "--dry-run",
-            help="Выполнить обход без записи данных в Google Sheets.",
+            help="Выполнить обход без записи в Excel.",
         ),
     )
 
@@ -103,8 +88,6 @@ def run_agent(
         help="Идентификатор запуска (по умолчанию генерируется UUID4).",
     ),
     log_level: str = _common_run_options()["log_level"],
-    resume: bool = _common_run_options()["resume"],
-    reset_state: bool = _common_run_options()["reset_state"],
     dry_run: bool = _common_run_options()["dry_run"],
 ) -> None:
     """Точка входа для единичного запуска агента."""
@@ -115,8 +98,6 @@ def run_agent(
         config_path=config_path,
         sites_dir=sites_dir_path,
         run_id=run_id,
-        resume=resume,
-        reset_state=reset_state,
         dry_run=dry_run,
     )
     runner.run(options)
@@ -128,8 +109,6 @@ def watch_agent(
     config_path: Optional[Path] = _common_run_options()["config_path"],
     sites_dir: Optional[Path] = _common_run_options()["sites_dir"],
     log_level: str = _common_run_options()["log_level"],
-    resume: bool = _common_run_options()["resume"],
-    reset_state: bool = _common_run_options()["reset_state"],
     dry_run: bool = _common_run_options()["dry_run"],
     success_delay: float = typer.Option(
         300.0,
@@ -158,8 +137,6 @@ def watch_agent(
         config_path=config_path,
         sites_dir=sites_dir_path,
         run_id=None,
-        resume=resume,
-        reset_state=reset_state,
         dry_run=dry_run,
     )
     runs_completed = 0
@@ -175,7 +152,7 @@ def watch_agent(
                 runner.run(options)
                 runs_completed += 1
                 logger.info("Цикл обхода #%s завершён", runs_completed)
-            except Exception:  # pragma: no cover - зависит от окружения запуска
+            except Exception:
                 logger.exception(
                     "Запуск агента завершился ошибкой, повтор через %s секунд",
                     error_delay,

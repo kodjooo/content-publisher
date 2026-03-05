@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -10,12 +9,10 @@ from dotenv import load_dotenv
 from rich.console import Console
 
 from app.config.loader import ConfigLoaderError, iter_site_configs, load_global_config
-from app.config.runtime_paths import resolve_path, resolve_str_path
 from app.crawler.service import CrawlService
+from app.excel import ExcelUpdater
 from app.logger import get_logger
 from app.runtime import RuntimeContext
-from app.state.storage import StateStore
-from app.sheets.writer import SheetsWriter
 
 console = Console()
 logger = get_logger(__name__)
@@ -26,8 +23,6 @@ class RunnerOptions:
     config_path: Path | None
     sites_dir: Path
     run_id: str | None = None
-    resume: bool = True
-    reset_state: bool = False
     dry_run: bool = False
 
 
@@ -56,56 +51,42 @@ class AgentRunner:
             console.print(f"[bold red]Ошибка конфигурации:[/bold red] {exc}")
             raise
 
-        state_store = StateStore(global_config.state.database)
-        if options.reset_state:
-            logger.warning("Запрошен полный сброс локального состояния")
-            state_store.reset_all()
-
-        assets_dir = resolve_path(
-            "PRODUCT_IMAGE_DIR",
-            local_default="assets/images",
-            docker_default="/app/assets/images",
-        )
-        assets_dir.mkdir(parents=True, exist_ok=True)
-        flush_products_env = os.getenv("WRITE_FLUSH_PRODUCT_INTERVAL")
-        if not flush_products_env:
-            flush_products_env = os.getenv("WRITE_FLUSH_PAGE_INTERVAL")
-        flush_products = int(flush_products_env or "1")
-        if flush_products < 1:
-            flush_products = 1
-
         context = RuntimeContext(
             run_id=run_id,
             started_at=datetime.now(timezone.utc),
             config=global_config,
             sites=site_configs,
-            state_store=state_store,
             dry_run=options.dry_run,
-            resume=options.resume,
-            assets_dir=assets_dir,
-            flush_product_interval=flush_products,
         )
-        try:
-            self._execute(context)
-        finally:
-            state_store.close()
+
+        self._execute(context)
 
     def _execute(self, context: RuntimeContext) -> None:
         console.print(
-            f"[yellow]Контекст подготовлен[/yellow]: лист={context.spreadsheet_id}, "
-            f"сайтов={len(context.sites)}, resume={context.resume}, "
-            f"dry_run={context.dry_run}"
+            f"[yellow]Контекст подготовлен[/yellow]: сайтов={len(context.sites)}, "
+            f"dry_run={context.dry_run}, excel={context.config.excel.workbook_path}"
         )
-        writer = SheetsWriter(context) if not context.dry_run else None
-        crawler = CrawlService(context, writer=writer)
+
+        crawler = CrawlService(context)
         self.latest_results = crawler.collect()
         total_records = sum(len(result.records) for result in self.latest_results)
         console.print(
             f"[green]Обход завершён[/green]: сайтов={len(self.latest_results)}, "
-            f"ссылок={total_records}"
+            f"товаров={total_records}"
         )
-        if writer is None:
-            console.print("[cyan]Dry-run: запись в Google Sheets пропущена[/cyan]")
+
+        if context.dry_run:
+            console.print("[cyan]Dry-run: обновление Excel пропущено[/cyan]")
             return
-        writer.finalize(self.latest_results)
-        console.print("[green]Данные записаны в Google Sheets[/green]")
+
+        updater = ExcelUpdater(
+            config=context.config.excel,
+            strip_params=context.config.dedupe.strip_params_blacklist,
+        )
+        summary = updater.apply(self.latest_results)
+        console.print(
+            "[green]Excel обновлён[/green]: "
+            f"processed={summary.processed}, "
+            f"updated={summary.updated}, "
+            f"skipped_not_found={summary.skipped_not_found}"
+        )

@@ -11,12 +11,6 @@ from app.config.loader import ConfigLoaderError, iter_site_configs, load_global_
 
 def _base_global_payload() -> dict:
     return {
-        "sheet": {
-            "spreadsheet_id": "TEST_SHEET",
-            "write_batch_size": 200,
-            "sheet_state_tab": "_state",
-            "sheet_runs_tab": "_runs",
-        },
         "runtime": {"max_concurrency_per_site": 2, "global_stop": {}},
         "network": {
             "user_agents": ["agent-1"],
@@ -25,7 +19,11 @@ def _base_global_payload() -> dict:
             "retry": {"max_attempts": 3, "backoff_sec": [1, 2, 3]},
         },
         "dedupe": {"strip_params_blacklist": ["utm_*"]},
-        "state": {"driver": "sqlite", "database": "/tmp/state.db"},
+        "excel": {
+            "workbook_path": "/tmp/products.xlsx",
+            "sheet_name": "Sheet1",
+            "header_row": 1,
+        },
     }
 
 
@@ -36,7 +34,10 @@ def _site_payload(name: str) -> dict:
             "domain": f"{name}.example.com",
             "engine": "http",
         },
-        "selectors": {"product_link_selector": ".product-card a"},
+        "selectors": {
+            "product_card_selector": ".product-card",
+            "product_link_selector": "a.product-link",
+        },
         "pagination": {"mode": "numbered_pages", "param_name": "page", "max_pages": 3},
         "limits": {"max_products": 10},
         "category_urls": ["https://example.com/catalog/"],
@@ -48,7 +49,7 @@ def test_load_global_config_yaml(tmp_path: Path) -> None:
     config_path.write_text(yaml.safe_dump(_base_global_payload()), encoding="utf-8")
 
     config = load_global_config(config_path)
-    assert config.sheet.spreadsheet_id == "TEST_SHEET"
+    assert config.excel.sheet_name == "Sheet1"
     assert config.network.user_agents == ["agent-1"]
 
 
@@ -61,16 +62,7 @@ def test_load_global_config_json(tmp_path: Path) -> None:
 
 
 def test_load_global_config_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("SHEET_SPREADSHEET_ID", "ENV_SHEET")
-    monkeypatch.setenv("SHEET_WRITE_BATCH_SIZE", "250")
-    monkeypatch.setenv("SHEET_STATE_TAB", "_state")
-    monkeypatch.setenv("SHEET_RUNS_TAB", "_runs")
     monkeypatch.setenv("RUNTIME_MAX_CONCURRENCY_PER_SITE", "3")
-    monkeypatch.setenv("RUNTIME_PAGE_DELAY_MIN_SEC", "6")
-    monkeypatch.setenv("RUNTIME_PAGE_DELAY_MAX_SEC", "9")
-    monkeypatch.setenv("RUNTIME_PRODUCT_DELAY_MIN_SEC", "10")
-    monkeypatch.setenv("RUNTIME_PRODUCT_DELAY_MAX_SEC", "14")
-    monkeypatch.setenv("PRODUCT_FETCH_ENGINE", "browser")
     monkeypatch.setenv("NETWORK_USER_AGENTS", "env-agent-1,env-agent-2")
     monkeypatch.setenv("NETWORK_REQUEST_TIMEOUT_SEC", "42")
     monkeypatch.setenv("NETWORK_RETRY_MAX_ATTEMPTS", "4")
@@ -83,21 +75,17 @@ def test_load_global_config_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("NETWORK_BROWSER_EXTRA_PAGE_PREVIEW_SEC", "1.5")
     monkeypatch.setenv("NETWORK_BROWSER_SLOW_MO_MS", "750")
     monkeypatch.setenv("NETWORK_ACCEPT_LANGUAGE", "ru-RU")
-    monkeypatch.setenv("STATE_DATABASE_PATH", "/tmp/env-state.db")
     monkeypatch.setenv("BEHAVIOR_ENABLED", "true")
     monkeypatch.setenv("BEHAVIOR_MOUSE_MOVE_MIN", "2")
     monkeypatch.setenv("BEHAVIOR_MOUSE_MOVE_MAX", "4")
     monkeypatch.setenv("BEHAVIOR_NAV_EXTRA_PRODUCTS_LIMIT", "1")
+    monkeypatch.setenv("EXCEL_FILE_PATH", "/tmp/products.xlsx")
+    monkeypatch.setenv("EXCEL_SHEET_NAME", "Products")
+    monkeypatch.setenv("EXCEL_URL_COLUMN_CANDIDATES", "product_url,ссылка")
 
     config = load_global_config(None)
-    assert config.sheet.spreadsheet_id == "ENV_SHEET"
     assert config.runtime.max_concurrency_per_site == 3
     assert config.network.retry.max_attempts == 4
-    assert config.runtime.page_delay.min_sec == 6
-    assert config.runtime.page_delay.max_sec == 9
-    assert config.runtime.product_delay.min_sec == 10
-    assert config.runtime.product_delay.max_sec == 14
-    assert config.runtime.product_fetch_engine == "browser"
     assert str(config.network.browser_storage_state_path) == "/tmp/auth.json"
     assert config.network.accept_language == "ru-RU"
     assert config.network.browser_headless is False
@@ -109,36 +97,11 @@ def test_load_global_config_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
     assert config.runtime.behavior.enabled is True
     assert config.runtime.behavior.mouse.move_count_min == 2
     assert config.runtime.behavior.navigation.extra_products_limit == 1
+    assert str(config.excel.workbook_path) == "/tmp/products.xlsx"
+    assert config.excel.sheet_name == "Products"
+    assert config.excel.url_column_candidates == ["product_url", "ссылка"]
 
 
-def test_state_path_defaults_follow_run_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    # обязательные переменные
-    monkeypatch.setenv("SHEET_SPREADSHEET_ID", "TEST_SHEET")
-    monkeypatch.setenv("SHEET_WRITE_BATCH_SIZE", "200")
-    monkeypatch.setenv("SHEET_STATE_TAB", "_state")
-    monkeypatch.setenv("SHEET_RUNS_TAB", "_runs")
-    monkeypatch.setenv("NETWORK_USER_AGENTS", "agent-1")
-    # убедимся, что пути берутся из APP_RUN_ENV
-    monkeypatch.delenv("STATE_DATABASE_PATH", raising=False)
-    monkeypatch.delenv("NETWORK_BROWSER_STORAGE_STATE_PATH", raising=False)
-
-    monkeypatch.setenv("APP_RUN_ENV", "docker")
-    docker_config = load_global_config(None)
-    assert str(docker_config.state.database) == "/var/app/state/runtime.db"
-    docker_default_storage = Path("/secrets/auth.json")
-    if docker_config.network.browser_storage_state_path is None:
-        assert not docker_default_storage.exists()
-    else:
-        assert docker_config.network.browser_storage_state_path == docker_default_storage
-
-    monkeypatch.setenv("APP_RUN_ENV", "local")
-    local_config = load_global_config(None)
-    assert str(local_config.state.database) == "state/runtime.db"
-    local_default_storage = Path("secrets/auth.json")
-    if local_config.network.browser_storage_state_path is None:
-        assert not local_default_storage.exists()
-    else:
-        assert local_config.network.browser_storage_state_path == local_default_storage
 def test_iter_site_configs_supports_multiple_files(tmp_path: Path) -> None:
     (tmp_path / "first.yml").write_text(
         yaml.safe_dump(_site_payload("first")), encoding="utf-8"

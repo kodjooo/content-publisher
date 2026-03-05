@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import os
-from pathlib import Path
-from typing import Iterable
 
 from app.config.errors import ConfigLoaderError
 from app.config.models import (
@@ -11,27 +9,19 @@ from app.config.models import (
     BehaviorScrollConfig,
     DedupeConfig,
     DelayConfig,
+    ExcelConfig,
     GlobalConfig,
     GlobalStopConfig,
     HumanBehaviorConfig,
     NetworkConfig,
     RetryPolicy,
     RuntimeConfig,
-    SheetConfig,
-    StateConfig,
 )
 from app.config.runtime_paths import resolve_optional_path, resolve_path
 
 
 def load_global_config_from_env() -> GlobalConfig:
     """Строит глобальную конфигурацию на основе переменных окружения."""
-    sheet = SheetConfig(
-        spreadsheet_id=_require("SHEET_SPREADSHEET_ID"),
-        write_batch_size=_int("SHEET_WRITE_BATCH_SIZE", default=200),
-        sheet_state_tab=os.getenv("SHEET_STATE_TAB", "_state"),
-        sheet_runs_tab=os.getenv("SHEET_RUNS_TAB", "_runs"),
-    )
-
     runtime = RuntimeConfig(
         max_concurrency_per_site=_int("RUNTIME_MAX_CONCURRENCY_PER_SITE", default=1),
         global_stop=GlobalStopConfig(
@@ -43,13 +33,7 @@ def load_global_config_from_env() -> GlobalConfig:
             default_min=5.0,
             default_max=8.0,
         ),
-        product_delay=_delay_from_env(
-            prefix="RUNTIME_PRODUCT_DELAY",
-            default_min=8.0,
-            default_max=12.0,
-        ),
         behavior=_behavior_from_env(),
-        product_fetch_engine=_product_fetch_engine(),
         fail_cooldown_threshold=_ensure_cooldown_threshold(),
         fail_cooldown_seconds=_ensure_cooldown_seconds(),
     )
@@ -105,21 +89,28 @@ def load_global_config_from_env() -> GlobalConfig:
         strip_params_blacklist=_list("DEDUPE_STRIP_PARAMS_BLACKLIST"),
     )
 
-    state = StateConfig(
-        driver=os.getenv("STATE_DRIVER", "sqlite"),  # type: ignore[arg-type]
-        database=resolve_path(
-            "STATE_DATABASE_PATH",
-            local_default="state/runtime.db",
-            docker_default="/var/app/state/runtime.db",
+    excel = ExcelConfig(
+        workbook_path=resolve_path(
+            "EXCEL_FILE_PATH",
+            local_default="products.xlsx",
+            docker_default="/app/products.xlsx",
         ),
+        sheet_name=os.getenv("EXCEL_SHEET_NAME") or None,
+        header_row=_int("EXCEL_HEADER_ROW", default=1) or 1,
+        url_column_candidates=_list(
+            "EXCEL_URL_COLUMN_CANDIDATES",
+            default=["product_url", "url", "link", "ссылка"],
+        ),
+        price_column_name=os.getenv("EXCEL_PRICE_COLUMN_NAME", "current_price"),
+        rating_column_name=os.getenv("EXCEL_RATING_COLUMN_NAME", "rating"),
+        in_stock_column_name=os.getenv("EXCEL_IN_STOCK_COLUMN_NAME", "in_stock"),
     )
 
     return GlobalConfig(
-        sheet=sheet,
         runtime=runtime,
         network=network,
         dedupe=dedupe,
-        state=state,
+        excel=excel,
     )
 
 
@@ -208,13 +199,6 @@ def _behavior_from_env() -> HumanBehaviorConfig:
     )
 
 
-def _product_fetch_engine() -> str:
-    value = os.getenv("PRODUCT_FETCH_ENGINE", "http").strip().lower()
-    if value not in {"http", "browser"}:
-        raise ConfigLoaderError("PRODUCT_FETCH_ENGINE должен быть 'http' или 'browser'")
-    return value
-
-
 def _ensure_cooldown_threshold() -> int:
     value = _int("FAIL_COOLDOWN_THRESHOLD", default=5)
     if value is None:
@@ -239,13 +223,6 @@ def _delay_from_env(*, prefix: str, default_min: float, default_max: float) -> D
     return DelayConfig(min_sec=min_value, max_sec=max_value)
 
 
-def _require(name: str) -> str:
-    value = os.getenv(name)
-    if not value:
-        raise ConfigLoaderError(f"Переменная окружения {name} не задана")
-    return value
-
-
 def _int(name: str, default: int | None = None) -> int | None:
     value = os.getenv(name)
     if value is None or value == "":
@@ -266,7 +243,7 @@ def _float(name: str, default: float | None = None) -> float | None:
         raise ConfigLoaderError(f"Ожидается число (float) в {name}") from exc
 
 
-def _list(name: str, default: Iterable[str] | None = None) -> list[str]:
+def _list(name: str, default: list[str] | None = None) -> list[str]:
     value = os.getenv(name)
     if value is None:
         return list(default) if default is not None else []
@@ -285,7 +262,7 @@ def _list_required(name: str) -> list[str]:
     return values
 
 
-def _float_list(name: str, default: Iterable[float] | None = None) -> list[float]:
+def _float_list(name: str, default: list[float] | None = None) -> list[float]:
     value = os.getenv(name)
     if value is None:
         return list(default) if default is not None else []

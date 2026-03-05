@@ -7,9 +7,7 @@ services:
       - .env
     volumes:
       - ./config/sites:/app/config/sites
-      - ./state:/var/app/state
-      - ./assets/images:/app/assets/images
-      - ./secrets:/secrets
+      - ./products.xlsx:/app/products.xlsx
       - ./logs:/var/log/parser
     dns:
       - 8.8.8.8
