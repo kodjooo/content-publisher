@@ -159,6 +159,39 @@ def test_process_rss_flow_handles_errors(clients):
     sheets.update_rss_row.assert_not_called()
 
 
+def test_process_rss_flow_continues_when_vk_short_link_failed(clients):
+    sheets, telegraph, vk, telegram, service = clients
+    row = RSSRow(
+        row_number=9,
+        gpt_post_title="Заголовок",
+        gpt_post="Текст",
+        short_post="Коротко",
+        average_post="",
+        link="",
+        image_url="https://example.com/image.jpg",
+        telegraph_link="https://telegra.ph/original-link",
+        vk_post_link="",
+        telegram_post_link="",
+        status="Revised",
+    )
+    sheets.fetch_rss_ready_rows.return_value = [row]
+    vk.get_short_link.side_effect = RuntimeError("Application is blocked")
+    vk.publish_post.return_value = "https://vk.com/wall-1_4"
+    telegram.send_post.return_value = "https://t.me/channel/4"
+
+    service.process_rss_flow()
+
+    vk_message = vk.publish_post.call_args[0][0]
+    assert "Читать подробнее > https://telegra.ph/original-link" in vk_message
+    sheets.update_rss_row.assert_called_once_with(
+        row,
+        "https://telegra.ph/original-link",
+        "https://vk.com/wall-1_4",
+        "https://t.me/channel/4",
+    )
+    sheets.write_rss_error.assert_not_called()
+
+
 def test_process_vk_flow_success(clients):
     sheets, _, vk, _, service = clients
     row = VKRow(

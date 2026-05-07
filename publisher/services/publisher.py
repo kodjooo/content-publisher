@@ -55,7 +55,7 @@ class PublisherService:
                 sanitized_text = self._prepare_short_post(row.short_post, row.gpt_post_title)
                 link_label = "Читать подробнее >"
                 raw_link = telegraph_link or ""
-            vk_link_target = self._vk.get_short_link(raw_link) if raw_link else ""
+            vk_link_target = self._resolve_vk_link_target(raw_link)
             vk_message = self._compose_vk_post_with_link(sanitized_text, vk_link_target, link_label)
             vk_link = self._vk.publish_post(vk_message, row.image_url)
             telegram_link = self._telegram.send_post(
@@ -186,3 +186,16 @@ class PublisherService:
         if link:
             parts.append(f"{label} {link}")
         return "\n\n".join(part for part in parts if part)
+
+    def _resolve_vk_link_target(self, raw_link: str) -> str:
+        """Пытается сократить ссылку для VK, при ошибке использует исходную."""
+        if not raw_link:
+            return ""
+        try:
+            return self._vk.get_short_link(raw_link)
+        except Exception as exc:  # noqa: BLE001
+            self._logger.warning(
+                "Не удалось сократить ссылку для VK, используется исходная ссылка",
+                extra={"raw_link": raw_link, "error": str(exc)},
+            )
+            return raw_link
