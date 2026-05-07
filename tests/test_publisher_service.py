@@ -46,11 +46,11 @@ def test_process_rss_flow_success(clients):
     vk.get_short_link.assert_called_once_with("https://telegra.ph/page")
     vk.publish_post.assert_called_once()
     vk_message = vk.publish_post.call_args[0][0]
-    assert vk_message.startswith("#Обзор_Новостей")
-    assert "Заголовок статьи" in vk_message.splitlines()[1]
+    assert vk_message.startswith("Заголовок статьи")
+    assert "#Обзор_Новостей" in vk_message
     assert "Читать подробнее > vk.cc/short" in vk_message
     telegram.send_post.assert_called_once_with(
-        "#Обзор_Новостей\nЗаголовок статьи\n\nКороткая версия",
+        "Заголовок статьи\n\nКороткая версия\n\n#Обзор_Новостей",
         row.image_url,
         "https://telegra.ph/page",
         add_spacing=True,
@@ -86,14 +86,14 @@ def test_process_rss_flow_uses_existing_telegraph_link(clients):
     sheets.update_rss_row.assert_called_once_with(row, "https://telegra.ph/existing", "https://vk.com/wall-1_2", "https://t.me/channel/2")
     vk.get_short_link.assert_called_once_with("https://telegra.ph/existing")
     telegram.send_post.assert_called_once_with(
-        "#Обзор_Новостей\n\nКоротко",
+        "Коротко\n\n#Обзор_Новостей",
         row.image_url,
         "https://telegra.ph/existing",
         add_spacing=True,
         link_label="Читать подробнее >",
     )
     vk_message = vk.publish_post.call_args[0][0]
-    assert vk_message.startswith("#Обзор_Новостей")
+    assert vk_message.startswith("Коротко")
     assert "Читать подробнее > vk.cc/existing" in vk_message
 
 
@@ -125,7 +125,7 @@ def test_process_rss_flow_average_post_mode(clients):
     vk_message = vk.publish_post.call_args[0][0]
     assert "Источник > vk.cc/source" in vk_message
     telegram.send_post.assert_called_once_with(
-        "#Обзор_Новостей\nСредний заголовок\n\nОсновной средний текст",
+        "Средний заголовок\n\nОсновной средний текст\n\n#Обзор_Новостей",
         row.image_url,
         "https://example.com/source",
         add_spacing=True,

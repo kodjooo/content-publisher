@@ -171,15 +171,15 @@ class PublisherService:
         return self._merge_with_header(body, title)
 
     def _merge_with_header(self, body: str, title: str) -> str:
-        """Добавляет стандартный заголовок для публикаций."""
-        header_lines = ["#Обзор_Новостей"]
+        """Добавляет стандартный хэштег в нижнюю часть публикации."""
+        parts = []
         normalized_title = title.strip()
         if normalized_title:
-            header_lines.append(normalized_title)
-        content_lines = [body] if body else []
-        if content_lines:
-            return "\n".join(header_lines + [""] + content_lines)
-        return "\n".join(header_lines)
+            parts.append(normalized_title)
+        if body:
+            parts.append(body)
+        parts.append("#Обзор_Новостей")
+        return "\n\n".join(parts)
 
     def _compose_vk_post_with_link(self, base_text: str, link: Optional[str], label: str) -> str:
         """Собирает сообщение VK с дополнительной ссылкой."""
