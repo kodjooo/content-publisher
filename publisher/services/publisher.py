@@ -12,6 +12,7 @@ from publisher.vk.client import VKClient
 
 class PublisherService:
     """Оркестратор публикаций."""
+    VK_RSS_FALLBACK_NOTE = "Не отправлено в VK"
 
     def __init__(
         self,
@@ -57,7 +58,7 @@ class PublisherService:
                 raw_link = telegraph_link or ""
             vk_link_target = self._resolve_vk_link_target(raw_link)
             vk_message = self._compose_vk_post_with_link(sanitized_text, vk_link_target, link_label)
-            vk_link = self._vk.publish_post(vk_message, row.image_url)
+            vk_link = self._publish_vk_for_rss(vk_message, row)
             telegram_link = self._telegram.send_post(
                 sanitized_text,
                 row.image_url,
@@ -199,3 +200,14 @@ class PublisherService:
                 extra={"raw_link": raw_link, "error": str(exc)},
             )
             return raw_link
+
+    def _publish_vk_for_rss(self, message: str, row: RSSRow) -> str:
+        """Публикует RSS-пост в VK, при ошибке возвращает служебную метку."""
+        try:
+            return self._vk.publish_post(message, row.image_url)
+        except Exception as exc:  # noqa: BLE001
+            self._logger.warning(
+                "Публикация RSS в VK не удалась, продолжаем без VK",
+                extra={"row": row.row_number, "error": str(exc)},
+            )
+            return self.VK_RSS_FALLBACK_NOTE

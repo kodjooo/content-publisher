@@ -151,12 +151,42 @@ def test_process_rss_flow_handles_errors(clients):
     )
     sheets.fetch_rss_ready_rows.return_value = [row]
     telegraph.create_page.return_value = "https://telegra.ph/page"
-    vk.publish_post.side_effect = RuntimeError("Ошибка VK")
+    telegram.send_post.side_effect = RuntimeError("Ошибка Telegram")
 
     service.process_rss_flow()
 
     sheets.write_rss_error.assert_called_once()
     sheets.update_rss_row.assert_not_called()
+
+
+def test_process_rss_flow_vk_publish_error_does_not_break_flow(clients):
+    sheets, telegraph, vk, telegram, service = clients
+    row = RSSRow(
+        row_number=12,
+        gpt_post_title="",
+        gpt_post="Текст",
+        short_post="Коротко",
+        average_post="",
+        link="",
+        image_url="https://example.com/image.jpg",
+        telegraph_link="https://telegra.ph/page-12",
+        vk_post_link="",
+        telegram_post_link="",
+        status="Revised",
+    )
+    sheets.fetch_rss_ready_rows.return_value = [row]
+    vk.publish_post.side_effect = RuntimeError("Ошибка VK")
+    telegram.send_post.return_value = "https://t.me/channel/12"
+
+    service.process_rss_flow()
+
+    sheets.update_rss_row.assert_called_once_with(
+        row,
+        "https://telegra.ph/page-12",
+        "Не отправлено в VK",
+        "https://t.me/channel/12",
+    )
+    sheets.write_rss_error.assert_not_called()
 
 
 def test_process_rss_flow_continues_when_vk_short_link_failed(clients):
