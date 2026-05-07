@@ -5,6 +5,30 @@ import logging
 import sys
 from typing import Any, Dict
 
+_RESERVED_LOG_RECORD_KEYS = {
+    "name",
+    "msg",
+    "args",
+    "levelname",
+    "levelno",
+    "pathname",
+    "filename",
+    "module",
+    "exc_info",
+    "exc_text",
+    "stack_info",
+    "lineno",
+    "funcName",
+    "created",
+    "msecs",
+    "relativeCreated",
+    "thread",
+    "threadName",
+    "processName",
+    "process",
+    "message",
+}
+
 
 class JsonFormatter(logging.Formatter):
     """Форматтер, сериализующий записи в JSON."""
@@ -17,9 +41,10 @@ class JsonFormatter(logging.Formatter):
         }
         if record.exc_info:
             payload["exception"] = self.formatException(record.exc_info)
-        extra = getattr(record, "extra", None)
-        if isinstance(extra, dict):
-            payload.update(extra)
+        for key, value in record.__dict__.items():
+            if key in _RESERVED_LOG_RECORD_KEYS:
+                continue
+            payload[key] = value
         return json.dumps(payload, ensure_ascii=False)
 
 
